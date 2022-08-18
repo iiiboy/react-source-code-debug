@@ -31,6 +31,7 @@ class EventDemo extends React.Component{
     console.log('父级元素捕获到点击事件');
   }
   onSubCounterClick = () => {
+    debugger;
     console.log('子元素点击事件');
   }
   render() {
