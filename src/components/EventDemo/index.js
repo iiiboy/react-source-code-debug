@@ -5,18 +5,18 @@ class EventDemo extends React.Component{
     count: 0,
   }
 
-  componentDidMount() {
-    this.setState({count: this.state.count + 1});
-    console.log(this.state.count);
-    this.setState({count: this.state.count + 1});
-    console.log(this.state.count);
-    setTimeout(() => {
-      this.setState({count: this.state.count + 1});
-      console.log(this.state.count);
-      this.setState({count: this.state.count + 1});
-      console.log(this.state.count);
-    }, 0);
-  }
+  // componentDidMount() {
+  //   this.setState({count: this.state.count + 1});
+  //   console.log(this.state.count);
+  //   this.setState({count: this.state.count + 1});
+  //   console.log(this.state.count);
+  //   setTimeout(() => {
+  //     this.setState({count: this.state.count + 1});
+  //     console.log(this.state.count);
+  //     this.setState({count: this.state.count + 1});
+  //     console.log(this.state.count);
+  //   }, 0);
+  // }
 
   onDemoClick = e => {
 
@@ -31,16 +31,20 @@ class EventDemo extends React.Component{
     console.log('父级元素捕获到点击事件');
   }
   onSubCounterClick = () => {
-    debugger;
     console.log('子元素点击事件');
   }
+
+  onSubCounterClickCapture = () => {
+    console.log('子元素点击事件 capture')
+  }
+
   render() {
     const { count } = this.state
 
     return <div
         className={'counter-parent'}
         onClick={this.onParentClick}
-        onClickCapture={this.onParentClickCapture}
+        // onClickCapture={this.onParentClickCapture}
     >
       counter-parent
       <div
@@ -48,7 +52,11 @@ class EventDemo extends React.Component{
           className={'counter'}
       >
         counter：{count}
-        <div className={'sub-counter'} onClick={this.onSubCounterClick}>
+        <div
+          className={'sub-counter'}
+          onClick={this.onSubCounterClick}
+          // onClickCapture={this.onSubCounterClickCapture}
+        >
           子组件
         </div>
       </div>

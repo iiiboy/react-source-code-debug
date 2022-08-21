@@ -52,4 +52,71 @@ function setInitialDOMProperties(
 
 ### 事件触发
 
-点击事件后，自然会执行 dispatchEvent
+使用的案例
+
+```jsx
+import React from 'react'
+import './index.css'
+class EventDemo extends React.Component{
+  state = {
+    count: 0,
+  }
+
+  onDemoClick = e => {this.setState({ count: this.state.count + 1 })}
+  onParentClick = () => {console.log('父级元素的点击事件被触发了');}
+  onParentClickCapture = () => {console.log('父级元素捕获到点击事件');}
+  onSubCounterClick = () => {console.log('子元素点击事件');}
+  onSubCounterClickCapture = () => {console.log('子元素点击事件 capture')}
+  
+  render() {
+    const { count } = this.state
+    return <div className={'counter-parent'} onClick={this.onParentClick} onClickCapture={this.onParentClickCapture}>
+      counter-parent
+      <div onClick={this.onDemoClick} className={'counter'}>
+        counter：{count}
+        <div className={'sub-counter'} onClick={this.onSubCounterClick} onClickCapture={this.onSubCounterClickCapture}>
+          子组件
+        </div>
+      </div>
+    </div>
+  }
+}
+
+export default EventDemo
+
+```
+
+1. 点击子元素后，自然会执行 dispatchEvent
+2. 然后会进入 [attemptToDispatchEvent](src/react/v17/react-dom/src/events/ReactDOMEventListener.js) 
+   （如果没有正在进行的事件？因为在进入 attemptToDispatchEvent 之前会进行 hasQueuedDiscreteEvents
+      hasQueuedDiscreteEvents 判断 具体可以看 dispatchEvent）
+   然后在 `attemptToDispatchEvent` 中会通过原生的事件参数(event)获取到触发事件的 DOM，然后通过该 DOM 获取到对应的 Fiber
+   然后正常情况下会进入 [dispatchEventForPluginEventSystem](src/react/v17/react-dom/src/events/DOMPluginEventSystem.js).
+3. `dispatchEventForPluginEventSystem` 一般会进入批量更新，也就是 `batchEventUpdates`，与 render 时的一样，也会传入一个匿名函数，不过该匿名函数内部执行的是：`dispatchEventsForPlugins`.
+4. `dispatchEventsForPlugins` 内部又执行 `extractEvents` 函数
+5. **`extractEvents`** 函数内部又会使用 `EventPlugin` 创建 react合成事件 的 Event 参数，并且会遍历 Fiber 链表，将将会触发的事件统统放到 dispatchQueue 中（具体遍历 Fiber 的函数是在 [accumulateSinglePhaseListeners](src/react/v17/react-dom/src/events/DOMPluginEventSystem.js) ）。
+   `accumulateSinglePhaseListeners` 与小册说的有一些差别，事件处理函数的执行顺序是没有问题的，具体流程如下
+   1. 首先会判断当前是 **捕获阶段** 还是 **冒泡阶段** 根据阶段的不同，使用不同的 **reactEventName** (例如：onClick 还是 onClickCapture) 
+   2. 然后会进入 while 循环，循环中会通过 `reactEventName` 获取 `instance` 的事件处理函数，即 `listener` 如果 `listener` 不为 null 那么就会将 `{ currentTarget, instance, listener }` 放到 `listeners` 中(`currentTarget` 是当前的 dom 元素，`instance` 是当前的 Fiber，`listener` 是当前的事件处理函数)，接着将 `instance` 指向 `instance.return` 继续 while 循环。
+   3. while 循环结束后，会将 `listeners` 返回出去。
+6. `extractEvents` 执行完成后，就会开始执行 dispatchQueue 中的内容了。
+
+针对我们的案例，分析一下具体的流程
+
+1. 点击子元素，那么就会直接触发 root 的 clickCapture 事件
+2. 进入 dispatchEvent
+3. 进入 **attemptToDispatchEvent**, 获取真实触发事件的 dom 和对应的 Fiber
+4. 进入 dispatchEventForPluginEventSystem
+5. 进入 batchEventUpdates
+6. 进入 dispatchEventsForPlugins
+7. 进入 **extractEvent** 获取 react合成事件参数
+8. 进入 **accumulateSinglePhaseListeners** 获取 listeners 数组因为当前是捕获阶段(在代码中会判断是什么阶段)，所以就只会收集捕获阶段的事件处理函数(直接 push 到 listeners 并不会像小册中说的那样 _遇到捕获事件就 unshift 可能是版本问题_)，**经过测试可以得知，无论案例中是否绑定了 clickCapture 都会去试图收集捕获阶段的事件处理函数， 只是收集不到而已**
+9. 返回 extractEvent 将 listeners 放到 dispatchQueue 中去
+10. 返回 dispatchEventsForPlugins 进入 processDispatchQueue 内部会判断当前到底是什么阶段，接着循环 dispatchQueue 
+11. 进入 processDispatchQueueItemsInOrder ，**根据阶段不同，按照不同的顺序执行 listeners，比如捕获阶段的话，就是从后往前，冒泡阶段的话就是从前往后。** 
+12. 再经过一系列函数的包裹，最终顺利执行函数。 
+13. capture 阶段完成后，直接进入 bubble 阶段，再次按照上面的顺序执行，最终 bubble 阶段也完成。就是这样。
+
+> 注意：listeners 的结构应该是 { currentTarget, instance, listener }, dispatchQueue 的结构应该是 [ { event, listeners } ] 此时的 event 应该是 React合成事件 event
+> 
+> 注意：在此案例中，无论是捕获阶段，还是冒泡阶段，因为 listeners 是一个数组(该阶段将要触发的所有 listener 数组)，所以 dispatchQueue 中都只有一个元素，不清楚在上面情况下 dispatchQueue 才有多个元素。
