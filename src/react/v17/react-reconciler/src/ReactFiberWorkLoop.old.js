@@ -550,6 +550,7 @@ export function scheduleUpdateOnFiber(
   lane: Lane,
   eventTime: number,
 ) {
+  debugger;
   checkForNestedUpdates();
   warnAboutRenderPhaseUpdatesInDEV(fiber);
 

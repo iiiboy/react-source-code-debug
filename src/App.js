@@ -19,18 +19,19 @@ import './App.css';
   }
 }*/
 function App() {
+  const [count, setCount] = useState(0);
 
   // 事件系统
-  return <EventDemo/>
+  // return <EventDemo/>
 
   // return <Hooks/>
   // fiber树
-  // return (
-  //   <div className="App">
-  //     <span className={'app-span'} onClick={() => setCount(count + 1)}>App{count}</span>
-  //     <AppSibling count={count}/>
-  //   </div>
-  // );
+  return (
+    <div className="App">
+      <span className={'app-span'} onClick={() => setCount(count + 1)}>App{count}</span>
+      <AppSibling count={count}/>
+    </div>
+  );
 
   // Scheduler调度任务与用户交互
   // return <SchedulerTask/>

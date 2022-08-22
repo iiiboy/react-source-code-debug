@@ -30,11 +30,11 @@ class SchedulerTask extends React.Component {
     })
 
   }
-  handleButtonClick = () => {
-    this.setState( prevState => {
-      return { count: prevState.count + 2 }
-    } )
-  }
+  // handleButtonClick = () => {
+  //   this.setState( prevState => {
+  //     return { count: prevState.count + 2 }
+  //   } )
+  // }
   onBeginTask = () => {
     setTimeout( () => this.setState( { count: this.state.count + 1 } ), 0 )
   }
@@ -45,7 +45,7 @@ class SchedulerTask extends React.Component {
       <div className="counter">
         <button onClick={this.onBeginTask}>开始</button>
         <div>
-          {Array.from(new Array(140000)).map( (v,index) =>
+          {Array.from(new Array(70000)).map( (v,index) =>
             <div key={index}>{count}</div>
           )}
         </div>

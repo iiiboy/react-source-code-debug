@@ -13,7 +13,7 @@ React对current树的每个节点进行beginWork操作，进入beginWork后，�
 
 beginWork的工作流程如下图，图中简化了流程，只对App节点进行了beginWork处理，其余节点流程相似
 
-![beginWork流程](http://neroht.com/beginWork2.gif)
+![beginWork流程](./beginWork2.gif)
 
 # 职责
 通过概述可知beginWork阶段的工作是会去更新节点，并返回子树，但真正的beginWork函数只是节点更新的入口，不会直接进行更新操作。作为入口，它的职责很明显，拦截无需
