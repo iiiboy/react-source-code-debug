@@ -3085,6 +3085,7 @@ function beginWork(
   workInProgress: Fiber,
   renderLanes: Lanes,
 ): Fiber | null {
+  debugger;
   const updateLanes = workInProgress.lanes;
 
   if (__DEV__) {
@@ -3104,6 +3105,8 @@ function beginWork(
       );
     }
   }
+
+  // 这里的 if-else 用于确定当前 didReceiveUpdate 的值，是否收到更新 ，可以暂时忽略
   if (current !== null) {
     const oldProps = current.memoizedProps;
     const newProps = workInProgress.pendingProps;

@@ -846,7 +846,7 @@ const handleScroll = () => {
 
 #### 绑定阶段
 
-详见：[事件系统](./docs/事件系统/zhangchuachua.md)
+详见：[事件系统](docs/zhangchuachua/事件/zhangchuachua.md)
 
 
 ### 小知识
