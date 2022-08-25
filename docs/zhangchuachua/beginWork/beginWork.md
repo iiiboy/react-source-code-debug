@@ -1,4 +1,4 @@
-# beginWork
+# beginWork & completeWork
 
 还未解决的问题：
 
@@ -6,6 +6,7 @@
 2. 因为 lane 一直是 SyncLane 所以不清楚异步更新是否是在 ensureRootIsScheduled 中执行
 3. 在 if(lane === SyncLane) 中会进行 context 的判断，需要理解 React Context 的具体含义
 4. 需要理解 [Lane](src/react/v17/react-reconciler/src/ReactFiberLane.js) 的具体含义
+5. effect 还不清楚
 
 总体而言，就是对更新流程完全的不了解！！
 
@@ -63,7 +64,7 @@ flowchart TB
 
 解释上面的一些内容：
 
-1. 上面所说的 root 并不是直接指 FiberRoot 而是 ReactDOMBlockingRoot 对象，大概是这样：`root = new ReactDOMBlockingRoot(...);` 然后 `root._internalRoot = FiberRoot` 无论是 legacy 还是 concurrent 模式 root 都是指 ReactDOMBlockingRoot (应该不是很重要，仅供了解)
+1. 上面所说的 root 并不是直接指 FiberRoot 而是 ReactDOMBlockingRoot 对象，大概是这样：`root = new ReactDOMBlockingRoot(...);` 然后 `root._internalRoot = FiberRoot` 无论是 legacy 还是 concurrent 模式 root 都是指 `ReactDOMBlockingRoot` (应该不是很重要，仅供了解)
 2. FiberRoot 当前整个 React应用 的根基，每个 React应用 只能有一个 FiberRoot
 3. HostRootFiber 假设当前的 render 是这样的 `ReactDOM.render(<Index />, root);` 那么 HostRootFiber 就是 `<Index />`
    的上层， `HostRootFiber.child = <index />`
@@ -84,22 +85,24 @@ flowchart TB
 
 beginWork 做的最重要的一件事情就是 `switch (wip.tag) {}` 判断 wip.tag 进入不同的处理函数。
 
-1. HostRootFiber 将会进入 updateHostRoot 处理
-2. FunctionComponent 将会进入 updateFunctionComponent
-3. ClassComponent 将会进入 updateClassComponent 处理
+1. `HostRootFiber` 将会进入 `updateHostRoot` 处理
+2. `FunctionComponent` 将会进入 `updateFunctionComponent`
+3. `ClassComponent` 将会进入 `updateClassComponent` 处理
 
 这里它们内部具体的处理流程可以暂时忽略, 因为处理流程中参加了 context, lane 等很多处理，在尚不理解前可以忽略。
 
-只需要知道一个大概就行了，在对 ClassComponent 的处理中，如果 instance 为 null 那么说明是第一次渲染，将会实例化 ClassComponent，并且执行相应的生命周期函数，比如在 render 之前的 getDerivedStateFromProps. 如果不为 null 那么将会执行更新操作。然后进入 finishClassComponent 调用实例的 render 获取 children 最后进入 reconcileChildren 并返回下一个需要进行的工作。
+只需要知道一个大概就行了，在对 `ClassComponent` 的处理中，如果 `instance` 为 `null` 那么说明是第一次渲染，将会实例化 `ClassComponent`，并且执行相应的生命周期函数，比如在 render 之前的 `getDerivedStateFromProps`. 如果不为 `null` 那么将会执行更新操作。然后进入 `finishClassComponent` 调用实例的 render 获取 children 最后进入 `reconcileChildren` 并返回下一个需要进行的工作。
 
-无论是第一次渲染，还是更新，都会进入 reconcileChildren 调和 children。函数内部通过检查 current 是否为 null 判断当前是 mountChildFibers 还是 reconcileChildFibers，其实这两个函数就是 ChildReconciler 传入不同的参数的返回值；至于不同的参数就是 mountChildFibers 将不会追踪副作用，reconcileChildFibers 将会追踪副作用。
+无论是第一次渲染，还是更新，都会进入 `reconcileChildren` 调和 `children`。函数内部通过检查 `current` 是否为 `null` 判断当前是 `mountChildFibers` 还是 `reconcileChildFibers`，其实这两个函数就是 `ChildReconciler` 传入不同的参数的返回值；至于不同的参数就是 `mountChildFibers` 将不会追踪副作用，`reconcileChildFibers` 将会追踪副作用。
 
-**ChildReconciler** ，它本身是一个函数，函数内还声明了很多功能函数，返回的函数就是 reconcileChildFibers，所以上面那两个函数最终都会进入 reconcileChildFibers 。
+**`ChildReconciler`** ，它本身是一个函数，函数内还声明了很多功能函数，返回的函数就是 `reconcileChildFibers`，所以上面那两个函数最终都会进入 `reconcileChildFibers` 。
 
-reconcileChildFibers 内部同样会根据不同的情况进入不同的处理函数，总之大概的操作就是
+`reconcileChildFibers` 内部同样会根据不同的情况进入不同的处理函数，总之大概的操作就是
 
-1. 对于 mount 阶段，那么直接创建新 Fiber，并且与父节点连接，生成 Fiber 树，某些情况下还会处理 ref。
+1. 对于 mount 阶段，那么直接创建新 Fiber，并且与父节点，兄弟节点连接，生成 Fiber 树，某些情况下还会处理 ref。
 2. 对于 update 阶段，就进行 diff 选择性复用 Fiber，并打上不同的副作用标记，在 commit 阶段中将会用到。
+
+> 注意：连接兄弟节点 sibling 在 reconcileChildrenArray 中完成，因为只有 children 是一个数组时才有兄弟节点，才需要连接兄弟节点。 reconcileChildrenArray 在学习 diff 时已经学过了
 
 到这里其实 beginWork 就执行完成了
 
@@ -133,4 +136,31 @@ judge1
 --> |"next === null"|completeUnitOfWork
 --> completeWork
 ```
+
+
+
+## completeWork
+
+什么时候执行 completeWork 呢？当 beginWork 的返回值为 null 时执行 completeUnitOfWork，然后 completeUnitOfWork 内部将会执行 completeWork
+
+与 beginWork 类似，completeWork 也是第一时间 `switch(wip.tag) {}` 判断 wip.tag 进入不同的处理
+
+completeWork 主要的内容：
+
+1. 构建 真实DOM，并且遍历 childFiber 将子孙节点节点追加到 DOM 中
+2. 处理 props，比如 className, style 处理等
+
+因为很多 React 组件的 stateNode 为 null 所以很多情况下 completeWork 并未做处理，而是直接返回 null, 比如 FunctionComponent, ForwardRef.
+
+completeWork 处理处理完成后，就结束了，一般都是返回 null, 只有在 SuspenseListComponent 和 SuspenseComponent 某些情况下才不会返回 null。因为 beginWork 将会一直返回 child 也就是一直深入，completeWork 返回 null 就说明当前路线已经到底了，而 SuspenseComponent 配合 React.lazy 是不能直接获取到它的 child 的， completeWork 在处理 SuspenseComponent 时在某些情况下将不会返回 null，好让 SuspenseComponent 完成未完成的 beginWork。
+
+completeWork 只负责处理 Fiber，那么遍历 Fiber 树和递归向上的操作是谁完成的呢？
+
+那就是 completeUnitOfWork
+
+---
+
+completeUnitOfWork 内部的工作最显而易见的就是一个 do-while 循环，每次循环都是判断 siblingFiber 是否存在，存在的话就直接返回，让 siblingFiber 进入 beginWork。如果 siblingFiber 不存在，那么就开始下一次循环处理 returnFiber。
+
+completeUnitOfWork 还会处理 Fiber 的副作用，将其整理成一个 effect 链表，在 commit 阶段将会执行。
 

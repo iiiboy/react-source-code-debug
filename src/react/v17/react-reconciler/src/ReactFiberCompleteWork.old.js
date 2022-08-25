@@ -7,13 +7,13 @@
  * @flow
  */
 
-import type {Fiber} from './ReactInternalTypes';
-import type {Lanes} from './ReactFiberLane';
+import type { Fiber } from './ReactInternalTypes';
+import type { Lanes } from './ReactFiberLane';
 import type {
   ReactFundamentalComponentInstance,
   ReactScopeInstance,
 } from 'shared/ReactTypes';
-import type {FiberRoot} from './ReactInternalTypes';
+import type { FiberRoot } from './ReactInternalTypes';
 import type {
   Instance,
   Type,
@@ -25,12 +25,12 @@ import type {
   SuspenseState,
   SuspenseListRenderState,
 } from './ReactFiberSuspenseComponent.old';
-import type {SuspenseContext} from './ReactFiberSuspenseContext.old';
-import type {OffscreenState} from './ReactFiberOffscreenComponent';
+import type { SuspenseContext } from './ReactFiberSuspenseContext.old';
+import type { OffscreenState } from './ReactFiberOffscreenComponent';
 
-import {resetWorkInProgressVersions as resetMutableSourceWorkInProgressVersions} from './ReactMutableSource.old';
+import { resetWorkInProgressVersions as resetMutableSourceWorkInProgressVersions } from './ReactMutableSource.old';
 
-import {now} from './SchedulerWithReactIntegration.old';
+import { now } from './SchedulerWithReactIntegration.old';
 
 import {
   IndeterminateComponent,
@@ -58,8 +58,8 @@ import {
   OffscreenComponent,
   LegacyHiddenComponent,
 } from './ReactWorkTags';
-import {NoMode, BlockingMode, ProfileMode} from './ReactTypeOfMode';
-import {Ref, Update, NoFlags, DidCapture, Snapshot} from './ReactFiberFlags';
+import { NoMode, BlockingMode, ProfileMode } from './ReactTypeOfMode';
+import { Ref, Update, NoFlags, DidCapture, Snapshot } from './ReactFiberFlags';
 import invariant from 'shared/invariant';
 
 import {
@@ -99,13 +99,13 @@ import {
   ForceSuspenseFallback,
   setDefaultShallowSuspenseContext,
 } from './ReactFiberSuspenseContext.old';
-import {findFirstSuspended} from './ReactFiberSuspenseComponent.old';
+import { findFirstSuspended } from './ReactFiberSuspenseComponent.old';
 import {
   isContextProvider as isLegacyContextProvider,
   popContext as popLegacyContext,
   popTopLevelContextObject as popTopLevelLegacyContextObject,
 } from './ReactFiberContext.old';
-import {popProvider} from './ReactFiberNewContext.old';
+import { popProvider } from './ReactFiberNewContext.old';
 import {
   prepareToHydrateHostInstance,
   prepareToHydrateHostTextInstance,
@@ -131,11 +131,11 @@ import {
   popRenderLanes,
   getRenderTargetTime,
 } from './ReactFiberWorkLoop.old';
-import {createFundamentalStateInstance} from './ReactFiberFundamental.old';
-import {OffscreenLane, SomeRetryLane} from './ReactFiberLane';
-import {resetChildFibers} from './ReactChildFiber.old';
-import {createScopeInstance} from './ReactFiberScope.old';
-import {transferActualDuration} from './ReactProfilerTimer.old';
+import { createFundamentalStateInstance } from './ReactFiberFundamental.old';
+import { OffscreenLane, SomeRetryLane } from './ReactFiberLane';
+import { resetChildFibers } from './ReactChildFiber.old';
+import { createScopeInstance } from './ReactFiberScope.old';
+import { transferActualDuration } from './ReactProfilerTimer.old';
 
 function markUpdate(workInProgress: Fiber) {
   // Tag the fiber with an update effect. This turns a Placement into
@@ -154,7 +154,7 @@ let updateHostText;
 if (supportsMutation) {
   // Mutation mode
 
-  appendAllChildren = function(
+  appendAllChildren = function (
     parent: Instance,
     workInProgress: Fiber,
     needsVisibilityToggle: boolean,
@@ -191,10 +191,10 @@ if (supportsMutation) {
     }
   };
 
-  updateHostContainer = function(workInProgress: Fiber) {
+  updateHostContainer = function (workInProgress: Fiber) {
     // Noop
   };
-  updateHostComponent = function(
+  updateHostComponent = function (
     current: Fiber,
     workInProgress: Fiber,
     type: Type,
@@ -235,7 +235,7 @@ if (supportsMutation) {
       markUpdate(workInProgress);
     }
   };
-  updateHostText = function(
+  updateHostText = function (
     current: Fiber,
     workInProgress: Fiber,
     oldText: string,
@@ -249,7 +249,7 @@ if (supportsMutation) {
 } else if (supportsPersistence) {
   // Persistent host tree mode
 
-  appendAllChildren = function(
+  appendAllChildren = function (
     parent: Instance,
     workInProgress: Fiber,
     needsVisibilityToggle: boolean,
@@ -343,7 +343,7 @@ if (supportsMutation) {
   };
 
   // An unfortunate fork of appendAllChildren because we have two different parent types.
-  const appendAllChildrenToContainer = function(
+  const appendAllChildrenToContainer = function (
     containerChildSet: ChildSet,
     workInProgress: Fiber,
     needsVisibilityToggle: boolean,
@@ -435,7 +435,7 @@ if (supportsMutation) {
       node = node.sibling;
     }
   };
-  updateHostContainer = function(workInProgress: Fiber) {
+  updateHostContainer = function (workInProgress: Fiber) {
     const portalOrRoot: {
       containerInfo: Container,
       pendingChildren: ChildSet,
@@ -455,7 +455,7 @@ if (supportsMutation) {
       finalizeContainerChildren(container, newChildSet);
     }
   };
-  updateHostComponent = function(
+  updateHostComponent = function (
     current: Fiber,
     workInProgress: Fiber,
     type: Type,
@@ -524,7 +524,7 @@ if (supportsMutation) {
       appendAllChildren(newInstance, workInProgress, false, false);
     }
   };
-  updateHostText = function(
+  updateHostText = function (
     current: Fiber,
     workInProgress: Fiber,
     oldText: string,
@@ -549,10 +549,10 @@ if (supportsMutation) {
   };
 } else {
   // No host operations
-  updateHostContainer = function(workInProgress: Fiber) {
+  updateHostContainer = function (workInProgress: Fiber) {
     // Noop
   };
-  updateHostComponent = function(
+  updateHostComponent = function (
     current: Fiber,
     workInProgress: Fiber,
     type: Type,
@@ -561,7 +561,7 @@ if (supportsMutation) {
   ) {
     // Noop
   };
-  updateHostText = function(
+  updateHostText = function (
     current: Fiber,
     workInProgress: Fiber,
     oldText: string,
@@ -717,7 +717,7 @@ function completeWork(
           invariant(
             workInProgress.stateNode !== null,
             'We must have new props for new mounts. This error is likely ' +
-              'caused by a bug in React. Please file an issue.',
+            'caused by a bug in React. Please file an issue.',
           );
           // This can happen when we abort work.
           return null;
@@ -791,7 +791,7 @@ function completeWork(
           invariant(
             workInProgress.stateNode !== null,
             'We must have new props for new mounts. This error is likely ' +
-              'caused by a bug in React. Please file an issue.',
+            'caused by a bug in React. Please file an issue.',
           );
           // This can happen when we abort work.
         }
@@ -824,7 +824,7 @@ function completeWork(
             invariant(
               wasHydrated,
               'A dehydrated suspense component was completed without a hydrated node. ' +
-                'This is probably a bug in React.',
+              'This is probably a bug in React.',
             );
             prepareToHydrateHostSuspenseInstance(workInProgress);
             if (enableSchedulerTracing) {
@@ -1111,7 +1111,7 @@ function completeWork(
             // time we have to render. So rendering one more row would likely
             // exceed it.
             now() * 2 - renderState.renderingStartTime >
-              getRenderTargetTime() &&
+            getRenderTargetTime() &&
             renderLanes !== OffscreenLane
           ) {
             // We have now passed our CPU deadline and we'll just give up further
@@ -1186,10 +1186,9 @@ function completeWork(
     case FundamentalComponent: {
       if (enableFundamentalAPI) {
         const fundamentalImpl = workInProgress.type.impl;
-        let fundamentalInstance: ReactFundamentalComponentInstance<
+        let fundamentalInstance: ReactFundamentalComponentInstance<any,
           any,
-          any,
-        > | null = workInProgress.stateNode;
+          > | null = workInProgress.stateNode;
 
         if (fundamentalInstance === null) {
           const getInitialState = fundamentalImpl.getInitialState;
@@ -1283,9 +1282,9 @@ function completeWork(
   invariant(
     false,
     'Unknown unit of work tag (%s). This error is likely caused by a bug in ' +
-      'React. Please file an issue.',
+    'React. Please file an issue.',
     workInProgress.tag,
   );
 }
 
-export {completeWork};
+export { completeWork };

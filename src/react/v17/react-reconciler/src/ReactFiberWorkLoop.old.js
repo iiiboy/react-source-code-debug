@@ -1745,6 +1745,7 @@ function performUnitOfWork(unitOfWork: Fiber): void {
 }
 
 function completeUnitOfWork(unitOfWork: Fiber): void {
+  debugger;
   // Attempt to complete the current unit of work, then move to the next
   // sibling. If there are no more siblings, return to the parent fiber.
   let completedWork = unitOfWork;
