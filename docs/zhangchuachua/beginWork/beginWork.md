@@ -137,8 +137,6 @@ judge1
 --> completeWork
 ```
 
-
-
 ## completeWork
 
 什么时候执行 completeWork 呢？当 beginWork 的返回值为 null 时执行 completeUnitOfWork，然后 completeUnitOfWork 内部将会执行 completeWork
@@ -149,6 +147,7 @@ completeWork 主要的内容：
 
 1. 构建 真实DOM，并且遍历 childFiber 将子孙节点节点追加到 DOM 中
 2. 处理 props，比如 className, style 处理等
+3. 处理 context 
 
 因为很多 React 组件的 stateNode 为 null 所以很多情况下 completeWork 并未做处理，而是直接返回 null, 比如 FunctionComponent, ForwardRef.
 
@@ -160,7 +159,55 @@ completeWork 只负责处理 Fiber，那么遍历 Fiber 树和递归向上的操
 
 ---
 
-completeUnitOfWork 内部的工作最显而易见的就是一个 do-while 循环，每次循环都是判断 siblingFiber 是否存在，存在的话就直接返回，让 siblingFiber 进入 beginWork。如果 siblingFiber 不存在，那么就开始下一次循环处理 returnFiber。
+completeUnitOfWork 主体是一个 do-while 循环。
 
-completeUnitOfWork 还会处理 Fiber 的副作用，将其整理成一个 effect 链表，在 commit 阶段将会执行。
+completeUnitOfWork 主要的作用除了将当前的 unitOfWork 放到 completeWork 之外，还会处理 completedWork(完成的工作) 的副作用，将其连接成一条 循环链表，因为对 react 中的 effect, flags 概念还不熟悉，暂时跳过。
 
+TODO effect flags
+
+最后如果 completedWork 的 sibling 不为 null，那么就会让 wip = completedWork.sibling 然后直接返回，好进入 sibling 的 beginWork 中。
+
+如果 completedWork 的 sibling 为 null 那么会接着处理 completedWork.return.
+
+## 最后
+
+构建 Fiber 树的过程其实就是一个深度优先遍历的过程。大致的流程如下所示
+
+```mermaid
+flowchart TB
+
+workLoop["workLoop or workLoopSync"]
+--> while[while 循环]
+--> performUnitOfWork["performUnitOfWork"]
+--> code1["next = beginWork(unitOfWork)"]
+--> beginWork["beginWork 执行函数组件或类组件 \n 很好理解，需要获取 children \n才能 reconcileChildren"]
+--> reconcileChildren[reconcileChildren \n 1. diffChildren \n 2. 转化为FiberNode, 连接为 Fiber树 \n 3. 打上副作用标记 flags]
+
+
+reconcileChildren 
+--> |return Fiber.child|beginWork
+
+beginWork
+--> |return Fiber.child|code1
+
+code1
+--> code2{"next === null ?"}
+--> |next !== null \n 继续 while 循环|while
+
+code2
+--> |"next === null"|completeUnitOfWork[completeUnitOfWork]
+--> doWhile[do-while]
+--> next2["next = completeWork(...)"]
+--> completeWork[completeWork \n 1. 创建真实 DOM 赋值给 stateNode\n 2. 处理 props, 例如 stye\n 3. 处理 context]
+--> |当处理的 Fiber 是\n SuspenseComponent 或\n SuspenseListComponent 时\n 有可能返回值不为 null|next2
+
+next2
+--> effects[处理 completedWork 的\n flasg, effect 等]
+--> judge{"completedWork.sibling === null ?"}
+--> |"=== null"|siblingNull["wip = completedWork.sibling"]
+--> while 
+
+judge
+--> |"!== null"|return[继续处理 completedWork.return]
+--> doWhile
+```

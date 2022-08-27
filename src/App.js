@@ -18,6 +18,12 @@ import './App.css';
     return <PropsDiff/>
   }
 }*/
+
+function CC() {
+  return <div>
+    this is CC function component
+  </div>
+}
 function App() {
   const [count, setCount] = useState(0);
 
@@ -28,6 +34,7 @@ function App() {
   // fiber树
   return (
     <div className="App">
+      <CC />
       <span className={'app-span'} onClick={() => setCount(count + 1)}>App{count}</span>
       <AppSibling count={count}/>
     </div>
