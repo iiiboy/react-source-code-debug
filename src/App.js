@@ -1,16 +1,16 @@
-import React, { useState } from 'react';
-import State from './components/State'
-import LanesDemo from './components/LanesDemo'
-import AppSibling from './components/AppSibling'
-import TasksWithDifferentPriorities from './components/TasksWithDifferentPriorities'
-import SchedulerTask from './components/SchedulerTask'
-import Concurrent from './components/ConcurrentInput'
-import Diff from './components/Diff'
-import PropsDiff from './components/PropsDiff'
+import React, { useState, useMemo } from "react";
+import State from "./components/State";
+import LanesDemo from "./components/LanesDemo";
+import AppSibling from "./components/AppSibling";
+import TasksWithDifferentPriorities from "./components/TasksWithDifferentPriorities";
+import SchedulerTask from "./components/SchedulerTask";
+import Concurrent from "./components/ConcurrentInput";
+import Diff from "./components/Diff";
+import PropsDiff from "./components/PropsDiff";
 import Hooks from "./components/Hooks";
 import EventDemo from "./components/EventDemo";
 import ContextDemo from "./components/Context";
-import './App.css';
+import "./App.css";
 
 // propsDiff
 /*class App extends React.Component {
@@ -20,25 +20,45 @@ import './App.css';
 }*/
 
 function CC() {
-  return <div>
-    this is CC function component
-  </div>
+  const [count, setCount] = useState(0);
+
+  const handleClick = useMemo(() => {
+    return () => {
+      setCount((prev) => prev + 1);
+    };
+  }, []);
+
+  return (
+    <div onClick={handleClick}>
+      this is CC function component,{" "}
+      <span style={{ color: "red" }}>{count}</span>
+    </div>
+  );
 }
+
 function App() {
   const [count, setCount] = useState(0);
+
+  return (
+    <main>
+      <CC />
+      <div>hello</div>
+      <p>world</p>
+    </main>
+  );
 
   // 事件系统
   // return <EventDemo/>
 
   // return <Hooks/>
   // fiber树
-  return (
-    <div className="App">
-      <CC />
-      <span className={'app-span'} onClick={() => setCount(count + 1)}>App{count}</span>
-      <AppSibling count={count}/>
-    </div>
-  );
+  // return (
+  //   <div className="App">
+  //     <CC />
+  //     <span className={'app-span'} onClick={() => setCount(count + 1)}>App{count}</span>
+  //     <AppSibling count={count}/>
+  //   </div>
+  // );
 
   // Scheduler调度任务与用户交互
   // return <SchedulerTask/>

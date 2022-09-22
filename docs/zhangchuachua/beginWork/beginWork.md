@@ -81,7 +81,7 @@ flowchart TB
    但是其实这并不是正常流程的更新，正常流程的更新一般直接走下面的 `scheduleUpdateOnFiber`。
    目前并不清楚什么情况下会走这里的判断。
 
-## beginWork
+## [beginWork](../../../src/react/v17/react-reconciler/src/ReactFiberBeginWork.old.js)
 
 beginWork 做的最重要的一件事情就是 `switch (wip.tag) {}` 判断 wip.tag 进入不同的处理函数。
 

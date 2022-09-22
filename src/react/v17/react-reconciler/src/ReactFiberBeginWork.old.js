@@ -3086,6 +3086,7 @@ function beginWork(
   renderLanes: Lanes,
 ): Fiber | null {
   const updateLanes = workInProgress.lanes;
+  debugger;
 
   if (__DEV__) {
     if (workInProgress._debugNeedsRemount && current !== null) {
@@ -3321,6 +3322,7 @@ function beginWork(
   workInProgress.lanes = NoLanes;
 
   switch (workInProgress.tag) {
+    // *用于不确定的组件，第一次渲染时，因为 Fiber 树还未建立，所有的 Fiber 都是新建的，新建的时候并未判断 Element 的类型，所以
     case IndeterminateComponent: {
       return mountIndeterminateComponent(
         current,
