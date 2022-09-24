@@ -3086,7 +3086,6 @@ function beginWork(
   renderLanes: Lanes,
 ): Fiber | null {
   const updateLanes = workInProgress.lanes;
-  debugger;
 
   if (__DEV__) {
     if (workInProgress._debugNeedsRemount && current !== null) {

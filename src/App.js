@@ -24,7 +24,16 @@ function CC() {
 
   const handleClick = useMemo(() => {
     return () => {
-      setCount((prev) => prev + 1);
+      debugger;
+      setCount((prev) => {
+        return prev + 1;
+      });
+      setCount((prev) => {
+        return prev + 1;
+      });
+      setCount((prev) => {
+        return prev + 1;
+      });
     };
   }, []);
 
