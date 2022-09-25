@@ -661,3 +661,180 @@ handleClick
 ```
 
 ![useReducer](useRedcuer.jpeg)
+
+## useEffect 原理
+
+### 挂载时
+
+```flow js
+function mountEffect(
+  create: () => (() => void) | void,
+  deps: Array<mixed> | void | null
+): void {
+  // ...
+  // 实际执行 mountEffectImpl
+  // *useLayoutEffect 实际执行也是 mountEffectImpl
+  // *useLayoutEffect 传入的参数不同，第一个和第二个参数分别为： UpdateEffect, HookLayout
+  return mountEffectImpl(
+    UpdateEffect | PassiveEffect,
+    HookPassive,
+    create,
+    deps
+  );
+}
+
+function mountEffectImpl(fiberFlags, hookFlags, create, deps): void {
+  // *这个上面说过，用于创建 Hook 对象，连接 hooks 链表。
+  const hook = mountWorkInProgressHook();
+  const nextDeps = deps === undefined ? null : deps;
+  // !这里有所不一样了，这里会对 wip.flags 赋值
+  // TODO flag 就是副作用，源文件位于 ReactFiberFlag，在 commit 阶段，react 会统一处理这些副作用，比如 DOM 操作等等，在 reconcileChildren 哪里也看到过，目前还不熟悉
+  currentlyRenderingFiber.flags |= fiberFlags;
+  // *这里 memoizedState 的值需要 pushEffect 处理。
+  hook.memoizedState = pushEffect(
+    HookHasEffect | hookFlags,
+    create,
+    undefined,
+    nextDeps
+  );
+}
+
+// *总结：pushEffect 的作用就是 
+// 1 创建一个 Effect 对象
+// 2 放到 wip 的 updateQueue 链表中去
+// 3 返回这个 Effect 对象
+function pushEffect(tag, create, destroy, deps) {
+  // 创建一个 Effect 对象
+  const effect: Effect = {
+    tag,
+    create,
+    destroy,
+    deps,
+    // Circular
+    next: (null: any),
+  };
+  // *获取 wip 的 updateQueue
+  let componentUpdateQueue: null | FunctionComponentUpdateQueue =
+    (currentlyRenderingFiber.updateQueue: any);
+  // *这里其实是熟悉的操作了，之前就说过 effect 也是一个链表，并且也是一个循环链表
+  // *所以这里的操作就是，updateQueue 为空时，进行初始化；不为空时，将当前的 Effect 对象放到链表中。
+  if (componentUpdateQueue === null) {
+    componentUpdateQueue = createFunctionComponentUpdateQueue();
+    currentlyRenderingFiber.updateQueue = (componentUpdateQueue: any);
+    componentUpdateQueue.lastEffect = effect.next = effect;
+  } else {
+    const lastEffect = componentUpdateQueue.lastEffect;
+    if (lastEffect === null) {
+      componentUpdateQueue.lastEffect = effect.next = effect;
+    } else {
+      const firstEffect = lastEffect.next;
+      lastEffect.next = effect;
+      effect.next = firstEffect;
+      componentUpdateQueue.lastEffect = effect;
+    }
+  }
+  // *返回创建的 effect
+  return effect;
+}
+```
+
+所以在 useEffect 就只是将副作用放到了 updateQueue 里面，然后在 commit 阶段进行 **调度** 执行.
+
+```jsx
+React.useEffect(()=>{
+    console.log('第一个effect')
+},[ props.a ])
+React.useLayoutEffect(()=>{
+    console.log('第二个effect')
+},[])
+React.useEffect(()=>{
+    console.log('第三个effect')
+    return () => {}
+},[])
+```
+
+上面的 jsx 在 updateQueue 中会变成这样。
+
+![useEffect-updateQueue](useEffect-updateQueue.jpeg)
+
+### 更新时
+
+更新时，自然执行 updateEffect
+
+```flow js
+function updateEffect(
+  create: () => (() => void) | void,
+  deps: Array<mixed> | void | null
+): void {
+  // *与 mountEffect 类似，实际执行 updateEffectImpl
+  // *useLayoutEffect 传入的第 1，2 个参数为：UpdateEffect, HookLayout
+  return updateEffectImpl(
+    UpdateEffect | PassiveEffect,
+    HookPassive,
+    create,
+    deps
+  );
+}
+
+function updateEffectImpl(fiberFlags, hookFlags, create, deps): void {
+  // 上面讲过，连接 hooks 链表，并且返回当前 hook 对应的 Hook 对象。
+  const hook = updateWorkInProgressHook();
+  const nextDeps = deps === undefined ? null : deps;
+  let destroy = undefined;
+
+  // *正常情况下 currenHook 都不会为 null。
+  if (currentHook !== null) {
+    // *上一次的 Effect 对象
+    const prevEffect = currentHook.memoizedState;
+    destroy = prevEffect.destroy;
+    if (nextDeps !== null) {
+      const prevDeps = prevEffect.deps;
+      // *比较前后 deps 是否一样
+      if (areHookInputsEqual(nextDeps, prevDeps)) {
+        // *如果一样的话，就直接返回。返回之前依然需要把当前 Effect 对象放到 updateQueue 里面去，不如下次更新就不会执行这个 useEffect 了。
+        pushEffect(hookFlags, create, destroy, nextDeps);
+        return;
+      }
+    }
+  }
+
+  // *deps 不一样的话，就会对 wip.flags 赋值。
+  currentlyRenderingFiber.flags |= fiberFlags;
+
+  // pushEffect 上面讲过，将 Effect 对象放到 updateQueue
+  hook.memoizedState = pushEffect(
+    HookHasEffect | hookFlags,
+    create,
+    destroy,
+    nextDeps
+  );
+}
+
+// *看一下比较 deps 的逻辑
+function areHookInputsEqual(
+  nextDeps: Array<mixed>,
+  prevDeps: Array<mixed> | null
+) {
+
+  // *deps 为 null 直接返回 false 每次都需要执行 useEffect
+  if (prevDeps === null) {
+    return false;
+  }
+
+  for (let i = 0; i < prevDeps.length && i < nextDeps.length; i++) {
+    // *这个 is 基本上就是 Object.is
+    // *Object.is 基本上等于 === 三等于符号
+    // 但是 Object.is(+0, -0) 结果是 false；+0 === -0 结果是 true
+    // Object.is(NaN, NaN) 结果是 true, NaN === NaN 结果是 false
+    if (is(nextDeps[i], prevDeps[i])) {
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+```
+
+> 注意：useEffect 的 deps 传递的是值，所以比较的是值。
+
+> 注意：Effect.destroy 并不是在执行 useEffect 时获得的，而是在 commit 阶段，执行副作用时，将会执行回调函数，这个时候才获得 destroy 并且赋值给 Effect。

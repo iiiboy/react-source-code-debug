@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import State from "./components/State";
 import LanesDemo from "./components/LanesDemo";
 import AppSibling from "./components/AppSibling";
@@ -19,23 +19,27 @@ import "./App.css";
   }
 }*/
 
+function random255() {
+  return Math.round(Math.random() * 255);
+}
+
 function CC() {
   const [count, setCount] = useState(0);
 
   const handleClick = useMemo(() => {
     return () => {
-      debugger;
-      setCount((prev) => {
-        return prev + 1;
-      });
-      setCount((prev) => {
-        return prev + 1;
-      });
       setCount((prev) => {
         return prev + 1;
       });
     };
   }, []);
+
+  useEffect(() => {
+    const r = random255();
+    const g = random255();
+    const b = random255();
+    document.body.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+  }, [count]);
 
   return (
     <div onClick={handleClick}>

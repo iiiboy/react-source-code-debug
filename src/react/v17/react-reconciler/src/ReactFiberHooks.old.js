@@ -655,7 +655,6 @@ function updateReducer<S, I, A>(
   initialArg: I,
   init?: (I) => S
 ): [S, Dispatch<A>] {
-  debugger;
   const hook = updateWorkInProgressHook();
   const queue = hook.queue;
   invariant(
