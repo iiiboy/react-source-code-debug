@@ -843,3 +843,65 @@ function areHookInputsEqual(
 > 注意：useEffect 的 deps 传递的是值，所以比较的是值。
 
 > 注意：Effect.destroy 并不是在执行 useEffect 时获得的，而是在 commit 阶段，执行副作用时，将会执行回调函数，这个时候才获得 destroy 并且赋值给 Effect。
+
+## useRef 原理
+
+useRef 非常简单, 就是每次找到对应的 Hook 对象，然后返回其 memoizedState 值就可以了。
+
+```flow js
+function mountRef<T>(initialValue: T): {| current: T |} {
+  const hook = mountWorkInProgressHook();
+  const ref = { current: initialValue };
+  hook.memoizedState = ref;
+  return ref;
+}
+
+function updateRef<T>(initialValue: T): {| current: T |} {
+  const hook = updateWorkInProgressHook();
+  return hook.memoizedState;
+}
+```
+
+## useMemo 原理
+
+useMemo 原理，相对于 useState, useEffect 来说也很简单
+
+```flow js
+function mountMemo<T>(
+  nextCreate: () => T,
+  deps: Array<mixed> | void | null
+): T {
+  const hook = mountWorkInProgressHook();
+  const nextDeps = deps === undefined ? null : deps;
+  // *执行函数，获取值
+  const nextValue = nextCreate();
+  // useMemo 的 memoizedState 记录的是一个数组，值 和 deps 
+  hook.memoizedState = [nextValue, nextDeps];
+  return nextValue;
+}
+
+function updateMemo<T>(
+  nextCreate: () => T,
+  deps: Array<mixed> | void | null
+): T {
+  const hook = updateWorkInProgressHook();
+  const nextDeps = deps === undefined ? null : deps;
+  const prevState = hook.memoizedState;
+  // *在 useEffect 中见到过，比较 deps
+  if (prevState !== null) {
+    // Assume these are defined. If they're not, areHookInputsEqual will warn.
+    if (nextDeps !== null) {
+      const prevDeps: Array<mixed> | null = prevState[1];
+      if (areHookInputsEqual(nextDeps, prevDeps)) {
+        // *如果 deps 相同，那么就直接返回值，不用修改 Hook 对象
+        return prevState[0];
+      }
+    }
+  }
+  // 获取新值
+  const nextValue = nextCreate();
+  // *修改 Hook 对象。
+  hook.memoizedState = [nextValue, nextDeps];
+  return nextValue;
+}
+```
