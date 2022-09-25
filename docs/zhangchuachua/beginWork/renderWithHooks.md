@@ -776,6 +776,8 @@ function updateEffect(
   );
 }
 
+// *fiberFlags 用于定义 fiber 的副作用
+// *hooksFlags 用于区分 useLayoutEffect 还是 useEffect 
 function updateEffectImpl(fiberFlags, hookFlags, create, deps): void {
   // 上面讲过，连接 hooks 链表，并且返回当前 hook 对应的 Hook 对象。
   const hook = updateWorkInProgressHook();
@@ -791,7 +793,9 @@ function updateEffectImpl(fiberFlags, hookFlags, create, deps): void {
       const prevDeps = prevEffect.deps;
       // *比较前后 deps 是否一样
       if (areHookInputsEqual(nextDeps, prevDeps)) {
-        // *如果一样的话，就直接返回。返回之前依然需要把当前 Effect 对象放到 updateQueue 里面去，不如下次更新就不会执行这个 useEffect 了。
+        // *如果一样的话，就直接返回。
+        // *返回之前依然需要创建 Effect 对象，并且放到 updateQueue 里面去，所以无论是否执行副作用，updateQueue 链表都是有所有的 useEffect 的 Effect 对象。
+        // !但是注意，这里的第一个参数没有 HookHasEffect 说明不回去执行这个副作用。
         pushEffect(hookFlags, create, destroy, nextDeps);
         return;
       }
@@ -802,6 +806,7 @@ function updateEffectImpl(fiberFlags, hookFlags, create, deps): void {
   currentlyRenderingFiber.flags |= fiberFlags;
 
   // pushEffect 上面讲过，将 Effect 对象放到 updateQueue
+  // *这里有 HookHasEffect
   hook.memoizedState = pushEffect(
     HookHasEffect | hookFlags,
     create,
