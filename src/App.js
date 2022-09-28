@@ -23,12 +23,13 @@ function random255() {
   return Math.round(Math.random() * 255);
 }
 
-function CC() {
+function FC() {
   const [count, setCount] = useState(0);
-
+  console.log('render')
   const handleClick = useMemo(() => {
     return () => {
       setCount((prev) => {
+        console.log('123')
         return prev + 1;
       });
     };
@@ -41,20 +42,96 @@ function CC() {
     document.body.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
   }, [count]);
 
+
   return (
     <div onClick={handleClick}>
       this is CC function component,{" "}
       <span style={{ color: "red" }}>{count}</span>
+      <button
+        onClick={handleClick}
+      >
+        click me
+      </button>
     </div>
   );
+}
+
+const FCC = React.memo(FC, () => true);
+
+class CC extends React.PureComponent {
+  constructor() {
+    super();
+    this.state = {
+      name: "",
+      age: 23,
+      timeId: null,
+    };
+    this.btnRef = React.createRef();
+    this.formRef = React.createRef();
+  }
+
+  componentWillReceiveProps(nextProps) {
+    this.setState({
+      name: "zwx",
+    });
+  }
+
+  render() {
+    console.log(this.btnRef);
+    return (
+      <div>
+        <form
+          ref={this.formRef}
+          onSubmit={(e) => {
+            const formData = new FormData(e.target);
+            e.preventDefault();
+            console.log(this.formRef);
+            console.log(formData.get('text'), '123123')
+          }}
+        >
+          <input
+            type="text"
+            name="text"
+            placeholder={"placeholder"}
+            value={this.state.name}
+            onInput={(e) => {
+              this.setState({ name: e.target.value });
+            }}
+          />
+          <input type="submit" value="submit" />
+        </form>
+
+        <p>{this.state.name}</p>
+        <p>{this.state.age}</p>
+        <button
+          ref={this.btnRef}
+          onClick={() => {
+            const { age, timeId } = this.state;
+            if (timeId) clearTimeout(timeId);
+            setTimeout(() => {
+              this.btnRef.current = age;
+            }, 1000);
+            this.setState({ age: age + 1 });
+          }}
+        >
+          click
+        </button>
+      </div>
+    );
+  }
 }
 
 function App() {
   const [count, setCount] = useState(0);
 
+  useEffect(() => {
+    setCount(100);
+  }, []);
+
   return (
     <main>
-      <CC />
+      {/*<CC />*/}
+      <FCC number={count} />
       <div>hello</div>
       <p>world</p>
     </main>
