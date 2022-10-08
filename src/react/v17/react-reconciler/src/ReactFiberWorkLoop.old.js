@@ -371,10 +371,12 @@ export function getWorkInProgressRoot(): FiberRoot | null {
 }
 
 export function requestEventTime() {
+  // *如果当前是 Render 或 Commit 的话就直接返回 now()
   if ((executionContext & (RenderContext | CommitContext)) !== NoContext) {
     // We're inside React, so it's fine to read the actual time.
     return now();
   }
+  // *如果 currentEventTime 存在的话，就说明是同时发生的事件，所以直接返回 currentEventTime
   // We're not inside React, so we may be in the middle of a browser event.
   if (currentEventTime !== NoTimestamp) {
     // Use the same start time for all updates until we enter React again.

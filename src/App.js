@@ -23,40 +23,40 @@ function random255() {
   return Math.round(Math.random() * 255);
 }
 
-function FC() {
-  const [count, setCount] = useState(0);
-  console.log('render')
-  const handleClick = useMemo(() => {
-    return () => {
-      setCount((prev) => {
-        console.log('123')
-        return prev + 1;
-      });
-    };
-  }, []);
+// function FC() {
+//   const [count, setCount] = useState(0);
+//   console.log('render')
+//   const handleClick = useMemo(() => {
+//     return () => {
+//       setCount((prev) => {
+//         console.log('123')
+//         return prev + 1;
+//       });
+//     };
+//   }, []);
+//
+//   useEffect(() => {
+//     const r = random255();
+//     const g = random255();
+//     const b = random255();
+//     document.body.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+//   }, [count]);
+//
+//
+//   return (
+//     <div onClick={handleClick}>
+//       this is CC function component,{" "}
+//       <span style={{ color: "red" }}>{count}</span>
+//       <button
+//         onClick={handleClick}
+//       >
+//         click me
+//       </button>
+//     </div>
+//   );
+// }
 
-  useEffect(() => {
-    const r = random255();
-    const g = random255();
-    const b = random255();
-    document.body.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
-  }, [count]);
-
-
-  return (
-    <div onClick={handleClick}>
-      this is CC function component,{" "}
-      <span style={{ color: "red" }}>{count}</span>
-      <button
-        onClick={handleClick}
-      >
-        click me
-      </button>
-    </div>
-  );
-}
-
-const FCC = React.memo(FC, () => true);
+// const FCC = React.memo(FC, () => true);
 
 class CC extends React.PureComponent {
   constructor() {
@@ -86,7 +86,7 @@ class CC extends React.PureComponent {
             const formData = new FormData(e.target);
             e.preventDefault();
             console.log(this.formRef);
-            console.log(formData.get('text'), '123123')
+            console.log(formData.get("text"), "123123");
           }}
         >
           <input
@@ -98,7 +98,7 @@ class CC extends React.PureComponent {
               this.setState({ name: e.target.value });
             }}
           />
-          <input type="submit" value="submit" />
+          <input type="submit" value="submit"/>
         </form>
 
         <p>{this.state.name}</p>
@@ -121,6 +121,50 @@ class CC extends React.PureComponent {
   }
 }
 
+function FCC() {
+  const [age, setAge] = useState(23);
+
+  const handleClick = React.useCallback(() => {
+    setAge(age + 1);
+    setAge(age + 1);
+    setAge(age + 1);
+  }, [age]);
+
+  return (
+    <div>
+      <h2>this is FC</h2>
+      <p>{age}</p>
+      <button onClick={handleClick}>FCC Click</button>
+    </div>
+  );
+}
+
+class CCC extends React.Component {
+  state = {
+    name: "zhangxu",
+    age: 23,
+  };
+  handleClick = () => {
+    console.log(this);
+    this.setState({ age: this.state.age + 1 });
+    this.setState({ age: this.state.age + 1 });
+    this.setState({ age: this.state.age + 1 });
+    this.setState({ age: this.state.age + 1 });
+    console.log(this.state.age);
+  };
+
+  render() {
+    return (
+      <div>
+        <h2>this is CCC</h2>
+        <p>{this.state.name}</p>
+        <p>{this.state.age}</p>
+        <button onClick={this.handleClick}>click</button>
+      </div>
+    );
+  }
+}
+
 function App() {
   const [count, setCount] = useState(0);
 
@@ -131,7 +175,9 @@ function App() {
   return (
     <main>
       {/*<CC />*/}
-      <FCC number={count} />
+      {/*<FCC number={count} />*/}
+      <FCC/>
+      {/*<CCC />*/}
       <div>hello</div>
       <p>world</p>
     </main>

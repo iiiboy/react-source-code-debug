@@ -202,8 +202,9 @@ function mountWorkInProgressHook(): Hook {
     currentlyRenderingFiber.memoizedState = workInProgressHook = hook;
   } else {
     // Append to the end of the list
-    // *第二次和后面的 hooks，workInProgressHook 有值，那就像下面这样赋值，形成一个链表
-    // !所以 hooks 的结构是一个链表
+    // *第二次和后面的 hooks，workInProgressHook 有值，那就像下面这样赋值
+    // !注意，memorizedState 是一个链表但并不是一个循环链表，末尾还是指向 null
+    // !所以说 FC 的 memorizedState 应该是这样的 useStateHook -> useMemoHook -> useEffectHook -> null 假设顺序是这样的哦。一定注意不是循环链表。 
     workInProgressHook = workInProgressHook.next = hook;
   }
   // *返回 workInProgressHook 因为当前正在初始化 hooks 链表，比如现在执行到了 useState 所以此时的 wipHook 其实就是 useState 对应的 Hook 对象，把这个对象的引用返回，useState 接下来的操作就可以针对这个对象进行操作了。链表中完全都是按照顺序的，所以 Hook 对象中根本没有当前 hook 的唯一标识，单纯使用顺序来进行对应。
@@ -415,7 +416,8 @@ function dispatchAction<S, A>(
     eagerState: null,
     next: (null: any),
   };
-
+  
+  // !memorizedState 不是循环链表，但是 queue 是循环链表
   // Append the update to the end of the list.
   const pending = queue.pending;// *待更新任务链表
   if (pending === null) {// *开始构建链表
@@ -439,7 +441,7 @@ function dispatchAction<S, A>(
     didScheduleRenderPhaseUpdateDuringThisPass =
       didScheduleRenderPhaseUpdate = true;
   } else {
-    // TODO 在这次的测试代码中，只有第一次 setState 的 lanes === NoLanes 所以后面两次都不会进入这个 if 可能与批量更新有关，还不清楚
+    // TODO 在这次的测试代码中，只有第一次 setState 的 lanes === NoLanes 所以后面两次都不会进入这个 if 可能与批量更新有关，还不清楚，在下面的总结中，说明了这个
     if (
       fiber.lanes === NoLanes &&
       (alternate === null || alternate.lanes === NoLanes)
@@ -482,8 +484,11 @@ function dispatchAction<S, A>(
 }
 ```
 
-在 dispatchAction 的最后，会进行调度更新，而调度更新时，就会进入 beginWork 然后进入 renderWithHooks 接着执行 FC 执行对应的
-useState
+![click-callstack](click-callstack.png)
+
+![updatereducer-callstack](updatereducer-callstack.png)
+
+在 dispatchAction 的最后，会执行 scheduleUpdateOnFiber 但是并不会直接进入调度更新，通过上面的截图可以看出来，进入 useReducer 时，调用栈里面并没有 updateReducer，具体的内容应该在 **调度部分** 了。
 
 > 注意：所以真正的流程是，每次执行 useState 然后触发 mountState | updateState，返回出现在的 state
 
@@ -905,3 +910,9 @@ function updateMemo<T>(
   return nextValue;
 }
 ```
+
+## 注意
+
+> 1. FC 的 memorizedState 不是循环链表，它是 Hook 对象的单向链表，假设一个 FC 的 Hooks 顺序为：useState -> useMemo -> useEffect 那么它的 memorizedState 是 useStateHook -> useMemoHook -> useEffectHook
+> 2. Hook 对象存储了当前 Hook 的基本信息，比如 useState 的 Hook 对象就会存储 baseState 等；classComponent 的 memorizedState 是一个对象不是链表，它直接有一个 baseState 属性进行存储。
+> 3. memorizedState 是一个单向链表，但是 Hook 对象的 pending 却是循环链表，对于 useState 的批量更新，就会先形成循环链表放到 pending 中；classComponent 的 setState 将会直接创建 Update 对象，并且放到 updateQueue 循环链表中去，FC 的 useEffect 也会直接使用 updateQueue。 这样感觉 类组件的 setState 反而与 函数组件 的 useEffect 更像了。

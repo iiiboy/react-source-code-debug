@@ -193,10 +193,14 @@ export function applyDerivedStateFromProps(
 const classComponentUpdater = {
   isMounted,
   enqueueSetState(inst, payload, callback) {
+    // 获取 fiber
     const fiber = getInstance(inst);
+    // *请求当前的时间, 对于同一个事件，请求的时间相同。如果一个事件处理函数中进行 setState 返回的 eventTime 一样
     const eventTime = requestEventTime();
+    // 请求优先级
     const lane = requestUpdateLane(fiber);
 
+    // *创建 update 对象 类型为 Update 可以通过 flow 查看类型。
     const update = createUpdate(eventTime, lane);
     update.payload = payload;
     if (callback !== undefined && callback !== null) {
@@ -206,7 +210,12 @@ const classComponentUpdater = {
       update.callback = callback;
     }
 
+    // *对于 enqueue**** 应该非常熟悉了，其实就是将对应的节点放到链表中去，但是这里有一点不一样，这里的 fiber.updateQueue 并不是一个链表，因为里面有一个属性是 baseState(Hooks 的 hook 是一个循环链表，然后每一个节点是一个对象，对象里面存储了 baseState，然后还有专门的 pending 存储更新链表)，所以这里差不多，使用 updateQueue 的 shared 对象存储需要待更新队列。
+    // *所以所有的 setState 都应该被放到 shared 里面去。
+    // !注意，因为一个事件中 setState 返回的 eventTime lane 都是一样的，所以如果有多个 setState 很可能 Update 对象也是一样的，所以 shared 里面的链表，看起来就是单节点的循环链表，像是这样 u1 -> u1
+    // !其实不是的，因为只是 Update 对象看着一致，其实还是 u1 -> u2 -> u3 -> ... -> u1 这样的循环链表
     enqueueUpdate(fiber, update);
+    // TODO 应该是非常重要的，暂时不知道具体什么用。
     scheduleUpdateOnFiber(fiber, lane, eventTime);
 
     if (__DEV__) {

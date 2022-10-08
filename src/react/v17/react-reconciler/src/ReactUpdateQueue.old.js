@@ -202,6 +202,7 @@ export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
     return;
   }
 
+  // *所有的更新队列都放到了 shared 里面去。与 Hooks 有所不同
   const sharedQueue: SharedQueue<State> = (updateQueue: any).shared;
   const pending = sharedQueue.pending;
   if (pending === null) {
