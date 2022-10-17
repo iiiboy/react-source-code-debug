@@ -531,11 +531,11 @@ export function resetHooksAfterThrow(): void {
 
 function mountWorkInProgressHook(): Hook {
   const hook: Hook = {
-    memoizedState: null,
+    memoizedState: null,// *useState useReducer 中保存 state useEffect 中保存 effect，useMemo 和 useCallback 中保存缓存的值和 deps，useRef 中保存 ref
 
-    baseState: null,
-    baseQueue: null,
-    queue: null,
+    baseState: null,// *一次更新中产生最新的值
+    baseQueue: null,// *保存最新的更新队列
+    queue: null,// *useState 中保存 pending 循环链表，dispatch 等
 
     next: null,
   };
@@ -673,8 +673,10 @@ function updateReducer<S, I, A>(
   if (pendingQueue !== null) {
     // We have new updates that haven't been processed yet.
     // We'll add them to the base queue.
+    // *如果这里的 baseQueue 有值，那么说明还有未处理的更新
     if (baseQueue !== null) {
       // Merge the pending queue and the base queue.
+      // *将 pendingQueue 放到 baseQueue 的末尾
       const baseFirst = baseQueue.next;
       const pendingFirst = pendingQueue.next;
       baseQueue.next = pendingFirst;
@@ -690,10 +692,12 @@ function updateReducer<S, I, A>(
         );
       }
     }
+    // *最终 baseQueue 指向 pendingQueue，也就是 循环链表 的末尾
     current.baseQueue = baseQueue = pendingQueue;
     queue.pending = null;
   }
 
+  // *开始根据 Update 进行更新
   if (baseQueue !== null) {
     // We have a queue to process.
     const first = baseQueue.next;
@@ -702,9 +706,12 @@ function updateReducer<S, I, A>(
     let newBaseState = null;
     let newBaseQueueFirst = null;
     let newBaseQueueLast = null;
+    // *指向第一个 Update 对象
     let update = first;
     do {
       const updateLane = update.lane;
+      // *检查 renderLanes 中是否不包含 updateLane
+      // *如果不包含的话，就会跳过此次更新
       if (!isSubsetOfLanes(renderLanes, updateLane)) {
         // Priority is insufficient. Skip this update. If this is the first
         // skipped update, the previous update/state is the new base
@@ -716,6 +723,7 @@ function updateReducer<S, I, A>(
           eagerState: update.eagerState,
           next: (null: any),
         };
+        // *跳过更新时，就会对 newBaseQueueLast 赋值，变成一个新的循环链表
         if (newBaseQueueLast === null) {
           newBaseQueueFirst = newBaseQueueLast = clone;
           newBaseState = newState;
@@ -733,6 +741,7 @@ function updateReducer<S, I, A>(
       } else {
         // This update does have sufficient priority.
 
+        // *如果之前的循环中有需要跳过的更新，那么后面的所有更新全部跳过，所以这里判断 newBaseQueueLast 不是 null 就全部放到 newBaseQueueLast中去
         if (newBaseQueueLast !== null) {
           const clone: Update<S, A> = {
             // This update is going to be committed so we never want uncommit
@@ -748,6 +757,7 @@ function updateReducer<S, I, A>(
         }
 
         // Process this update.
+        // *如果存储的 reducer 与 初始 reducer 一致，那么直接返回 newState
         if (update.eagerReducer === reducer) {
           // If this update was processed eagerly, and its reducer matches the
           // current reducer, we can use the eagerly computed state.
@@ -760,6 +770,7 @@ function updateReducer<S, I, A>(
       update = update.next;
     } while (update !== null && update !== first);
 
+    // *如果没有跳过的更新，那么就可以直接对 newBaseState 赋值
     if (newBaseQueueLast === null) {
       newBaseState = newState;
     } else {
@@ -768,10 +779,12 @@ function updateReducer<S, I, A>(
 
     // Mark that the fiber performed work, but only if the new state is
     // different from the current state.
+    // *如果两者不一样，那么说明需要进行重新渲染，标记 wip 收到了更新，后续的调和 children 时就不会直接复用
     if (!is(newState, hook.memoizedState)) {
       markWorkInProgressReceivedUpdate();
     }
 
+    // *对 Hook 对象的值进行修改
     hook.memoizedState = newState;
     hook.baseState = newBaseState;
     hook.baseQueue = newBaseQueueLast;
@@ -780,6 +793,7 @@ function updateReducer<S, I, A>(
   }
 
   const dispatch: Dispatch<A> = (queue.dispatch: any);
+  // *进行返回。
   return [hook.memoizedState, dispatch];
 }
 
@@ -1656,6 +1670,7 @@ function dispatchAction<S, A>(
   }
 
   const eventTime = requestEventTime();
+  // *当前是 legacy 模式，所以直接返回 NoLane
   const lane = requestUpdateLane(fiber);
 
   const update: Update<S, A> = {
@@ -1678,6 +1693,7 @@ function dispatchAction<S, A>(
   queue.pending = update;
 
   const alternate = fiber.alternate;
+  // 如果 fiber 是当前正在更新的 fiber
   if (
     fiber === currentlyRenderingFiber ||
     (alternate !== null && alternate === currentlyRenderingFiber)
@@ -1704,7 +1720,9 @@ function dispatchAction<S, A>(
             InvalidNestedHooksDispatcherOnUpdateInDEV;
         }
         try {
+          // *当前值
           const currentState: S = (queue.lastRenderedState: any);
+          // *获取更新后的值
           const eagerState = lastRenderedReducer(currentState, action);
           // Stash the eagerly computed state, and the reducer used to compute
           // it, on the update object. If the reducer hasn't changed by the

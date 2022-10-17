@@ -1,4 +1,4 @@
-## [renderWithHooks](../../../src/react/v17/react-reconciler/src/ReactFiberHooks.old.js)
+## [renderWithHooks](src/react/v17/react-reconciler/src/ReactFiberHooks.old.js)
 
 函数组件一定会执行该函数，对理解 Hooks 非常重要
 
@@ -27,9 +27,9 @@ export function renderWithHooks<Props, SecondArg>(
   }
 
   // *重置对应的属性
-  // TODO 掘金小册中说对于 ClassCompoennt memoizedState 用于存储 state 信息，对于 FC 用于存储 hooks 信息
+  // *ClassCompoennt 中 memoizedState 用于存储 state 信息，对于 FC 用于存储 hooks 信息
   workInProgress.memoizedState = null;
-  // TODO 小册中说 updateQueue 对于 FC 存放每个 useEffect/useLayoutEffect 产生的副作用组成的链表。在 commit 阶段更新这些副作用。
+  // *updateQueue 对于 FC 存放每个 useEffect/useLayoutEffect 产生的副作用组成的链表。在 commit 阶段更新这些副作用。
   workInProgress.updateQueue = null;
   workInProgress.lanes = NoLanes;
 
@@ -70,6 +70,7 @@ export function renderWithHooks<Props, SecondArg>(
 
   // *在这里执行函数，同时也执行了 hooks 然后获取返回值
   // *有一个问题，hooks 都是从 react 中引入的，那么怎么还不同时期调用不同的 hooks 呢？ 具体看下面的 ## 根据不同时期获取不同的 hooks
+  // *这里传入了第二个参数 seconedArg，这个参数其实就是 context，函数组件可以使用 FC.contextType = Context 来获取 context，并且可以直接从第二个参数中获取 context
   let children = Component(props, secondArg);
 
   // *检查是否有渲染阶段更新，这个涉及到 调度与调和 暂时跳过
@@ -285,7 +286,7 @@ function updateWorkInProgressHook(): Hook {
   if (workInProgressHook === null) {// *workInProgressHook 为空，说明此时链表都为空
     nextWorkInProgressHook = currentlyRenderingFiber.memoizedState;// *同样的 renderWithHooks 会清空 wip.memoizedState
   } else {
-    // *链表存在就指向末尾
+    // *链表存在就指向 next
     nextWorkInProgressHook = workInProgressHook.next;
   }
 
@@ -504,9 +505,9 @@ function updateState<S>(
 
 // !总结：updateReducer 做的事情，其实就是把 update 链表拿出来，然后循环执行 reducer，获取 eagerState，然后与 prev 进行比对，最后返回新的 [state, setState];
 function updateReducer<S, I, A>(
-  reducer: (S, A) => S,
-  initialArg: I,
-  init?: I => S,
+    reducer: (S, A) => S,
+    initialArg: I,
+    init?: (I) => S
 ): [S, Dispatch<A>] {
   // *updateWorkInProgressHook 详细见下面👇
   const hook = updateWorkInProgressHook();
@@ -516,128 +517,140 @@ function updateReducer<S, I, A>(
     'Should have a queue. This is likely a bug in React. Please file an issue.',
   );
 
-  queue.lastRenderedReducer = reducer;
+   queue.lastRenderedReducer = reducer;
 
-  const current: Hook = (currentHook: any);
+   const current: Hook = (currentHook: any);
 
-  // The last rebase update that is NOT part of the base state.
-  let baseQueue = current.baseQueue;
+   // The last rebase update that is NOT part of the base state.
+   let baseQueue = current.baseQueue;
 
-  // The last pending update that hasn't been processed yet.
-  const pendingQueue = queue.pending;
-  if (pendingQueue !== null) {
-    // We have new updates that haven't been processed yet.
-    // We'll add them to the base queue.
-    if (baseQueue !== null) {
-      // Merge the pending queue and the base queue.
-      const baseFirst = baseQueue.next;
-      const pendingFirst = pendingQueue.next;
-      baseQueue.next = pendingFirst;
-      pendingQueue.next = baseFirst;
-    }
-    if (__DEV__) {
-      if (current.baseQueue !== baseQueue) {
-        // Internal invariant that should never happen, but feasibly could in
-        // the future if we implement resuming, or some form of that.
-        console.error(
-          'Internal error: Expected work-in-progress queue to be a clone. ' +
-          'This is a bug in React.',
-        );
+   // The last pending update that hasn't been processed yet.
+   const pendingQueue = queue.pending;
+   if (pendingQueue !== null) {
+      // We have new updates that haven't been processed yet.
+      // We'll add them to the base queue.
+      // *如果这里的 baseQueue 有值，那么说明还有未处理的更新
+      if (baseQueue !== null) {
+         // Merge the pending queue and the base queue.
+         // *将 pendingQueue 放到 baseQueue 的末尾
+         const baseFirst = baseQueue.next;
+         const pendingFirst = pendingQueue.next;
+         baseQueue.next = pendingFirst;
+         pendingQueue.next = baseFirst;
       }
-    }
-    current.baseQueue = baseQueue = pendingQueue;
-    queue.pending = null;
-  }
+      if (__DEV__) {
+         if (current.baseQueue !== baseQueue) {
+            // Internal invariant that should never happen, but feasibly could in
+            // the future if we implement resuming, or some form of that.
+            console.error(
+                "Internal error: Expected work-in-progress queue to be a clone. " +
+                "This is a bug in React."
+            );
+         }
+      }
+      // *最终 baseQueue 指向 pendingQueue，也就是 循环链表 的末尾
+      current.baseQueue = baseQueue = pendingQueue;
+      queue.pending = null;
+   }
 
-  if (baseQueue !== null) {
-    // We have a queue to process.
-    const first = baseQueue.next;
-    let newState = current.baseState;
+   // *开始根据 Update 进行更新
+   if (baseQueue !== null) {
+      // We have a queue to process.
+      const first = baseQueue.next;
+      let newState = current.baseState;
 
-    let newBaseState = null;
-    let newBaseQueueFirst = null;
-    let newBaseQueueLast = null;
-    let update = first;
-    do {
-      const updateLane = update.lane;
-      if (!isSubsetOfLanes(renderLanes, updateLane)) {
-        // Priority is insufficient. Skip this update. If this is the first
-        // skipped update, the previous update/state is the new base
-        // update/state.
-        const clone: Update<S, A> = {
-          lane: updateLane,
-          action: update.action,
-          eagerReducer: update.eagerReducer,
-          eagerState: update.eagerState,
-          next: (null: any),
-        };
-        if (newBaseQueueLast === null) {
-          newBaseQueueFirst = newBaseQueueLast = clone;
-          newBaseState = newState;
-        } else {
-          newBaseQueueLast = newBaseQueueLast.next = clone;
-        }
-        // Update the remaining priority in the queue.
-        // TODO: Don't need to accumulate this. Instead, we can remove
-        // renderLanes from the original lanes.
-        currentlyRenderingFiber.lanes = mergeLanes(
-          currentlyRenderingFiber.lanes,
-          updateLane,
-        );
-        markSkippedUpdateLanes(updateLane);
+      let newBaseState = null;
+      let newBaseQueueFirst = null;
+      let newBaseQueueLast = null;
+      // *指向第一个 Update 对象
+      let update = first;
+      do {
+         const updateLane = update.lane;
+         // *检查 renderLanes 中是否不包含 updateLane
+         // *如果不包含的话，就会跳过此次更新
+         if (!isSubsetOfLanes(renderLanes, updateLane)) {
+            // Priority is insufficient. Skip this update. If this is the first
+            // skipped update, the previous update/state is the new base
+            // update/state.
+            const clone: Update<S, A> = {
+               lane: updateLane,
+               action: update.action,
+               eagerReducer: update.eagerReducer,
+               eagerState: update.eagerState,
+               next: (null: any),
+            };
+            // *跳过更新时，就会对 newBaseQueueLast 赋值，变成一个新的循环链表
+            if (newBaseQueueLast === null) {
+               newBaseQueueFirst = newBaseQueueLast = clone;
+               newBaseState = newState;
+            } else {
+               newBaseQueueLast = newBaseQueueLast.next = clone;
+            }
+            // Update the remaining priority in the queue.
+            // TODO: Don't need to accumulate this. Instead, we can remove
+            // renderLanes from the original lanes.
+            currentlyRenderingFiber.lanes = mergeLanes(
+                currentlyRenderingFiber.lanes,
+                updateLane
+            );
+            markSkippedUpdateLanes(updateLane);
+         } else {
+            // This update does have sufficient priority.
+
+            // *如果之前的循环中有需要跳过的更新，那么后面的所有更新全部跳过，所以这里判断 newBaseQueueLast 不是 null 就全部放到 newBaseQueueLast中去
+            if (newBaseQueueLast !== null) {
+               const clone: Update<S, A> = {
+                  // This update is going to be committed so we never want uncommit
+                  // it. Using NoLane works because 0 is a subset of all bitmasks, so
+                  // this will never be skipped by the check above.
+                  lane: NoLane,
+                  action: update.action,
+                  eagerReducer: update.eagerReducer,
+                  eagerState: update.eagerState,
+                  next: (null: any),
+               };
+               newBaseQueueLast = newBaseQueueLast.next = clone;
+            }
+
+            // Process this update.
+            // *如果存储的 reducer 与 初始 reducer 一致，那么直接返回 newState
+            if (update.eagerReducer === reducer) {
+               // If this update was processed eagerly, and its reducer matches the
+               // current reducer, we can use the eagerly computed state.
+               newState = ((update.eagerState: any): S);
+            } else {
+               const action = update.action;
+               newState = reducer(newState, action);
+            }
+         }
+         update = update.next;
+      } while (update !== null && update !== first);
+
+      // *如果没有跳过的更新，那么就可以直接对 newBaseState 赋值
+      if (newBaseQueueLast === null) {
+         newBaseState = newState;
       } else {
-        // This update does have sufficient priority.
-
-        if (newBaseQueueLast !== null) {
-          const clone: Update<S, A> = {
-            // This update is going to be committed so we never want uncommit
-            // it. Using NoLane works because 0 is a subset of all bitmasks, so
-            // this will never be skipped by the check above.
-            lane: NoLane,
-            action: update.action,
-            eagerReducer: update.eagerReducer,
-            eagerState: update.eagerState,
-            next: (null: any),
-          };
-          newBaseQueueLast = newBaseQueueLast.next = clone;
-        }
-
-        // *这里就于 dispatchAction 注释中说得对应了起来。当 reducer 不一样时，需要重新通过 reducer 获取 eagerState
-        // !在批量更新时将会用到，因为批量更新的 update 对象的 reducer 为 null
-        // Process this update.
-        if (update.eagerReducer === reducer) {
-          // If this update was processed eagerly, and its reducer matches the
-          // current reducer, we can use the eagerly computed state.
-          newState = ((update.eagerState: any): S);
-        } else {
-          const action = update.action;
-          newState = reducer(newState, action);
-        }
+         newBaseQueueLast.next = (newBaseQueueFirst: any);
       }
-      update = update.next;
-    } while (update !== null && update !== first);
 
-    if (newBaseQueueLast === null) {
-      newBaseState = newState;
-    } else {
-      newBaseQueueLast.next = (newBaseQueueFirst: any);
-    }
+      // Mark that the fiber performed work, but only if the new state is
+      // different from the current state.
+      // *如果两者不一样，那么说明需要进行重新渲染，标记 wip 收到了更新，后续的调和 children 时就不会直接复用
+      if (!is(newState, hook.memoizedState)) {
+         markWorkInProgressReceivedUpdate();
+      }
 
-    // Mark that the fiber performed work, but only if the new state is
-    // different from the current state.
-    if (!is(newState, hook.memoizedState)) {
-      markWorkInProgressReceivedUpdate();
-    }
+      // *对 Hook 对象的值进行修改
+      hook.memoizedState = newState;
+      hook.baseState = newBaseState;
+      hook.baseQueue = newBaseQueueLast;
 
-    hook.memoizedState = newState;
-    hook.baseState = newBaseState;
-    hook.baseQueue = newBaseQueueLast;
+      queue.lastRenderedState = newState;
+   }
 
-    queue.lastRenderedState = newState;
-  }
-
-  const dispatch: Dispatch<A> = (queue.dispatch: any);
-  return [hook.memoizedState, dispatch];
+   const dispatch: Dispatch<A> = (queue.dispatch: any);
+   // *进行返回。
+   return [hook.memoizedState, dispatch];
 }
 ```
 
@@ -916,3 +929,25 @@ function updateMemo<T>(
 > 1. FC 的 memorizedState 不是循环链表，它是 Hook 对象的单向链表，假设一个 FC 的 Hooks 顺序为：useState -> useMemo -> useEffect 那么它的 memorizedState 是 useStateHook -> useMemoHook -> useEffectHook
 > 2. Hook 对象存储了当前 Hook 的基本信息，比如 useState 的 Hook 对象就会存储 baseState 等；classComponent 的 memorizedState 是一个对象不是链表，它直接有一个 baseState 属性进行存储。
 > 3. memorizedState 是一个单向链表，但是 Hook 对象的 pending 却是循环链表，对于 useState 的批量更新，就会先形成循环链表放到 pending 中；classComponent 的 setState 将会直接创建 Update 对象，并且放到 updateQueue 循环链表中去，FC 的 useEffect 也会直接使用 updateQueue。 这样感觉 类组件的 setState 反而与 函数组件 的 useEffect 更像了。
+
+```mermaid
+flowchart TB
+
+subgraph memoriezedState 链表
+useStateHook
+--> |next|useMemoHook
+--> |next|useEffectHook
+--> |next|null
+end
+
+
+subgraph useStateHook 对象中的 pending 循环链表
+useStateHook.queue.pengding
+--> UpdateObj3
+
+UpdateObj1
+--> UpdateObj2
+--> UpdateObj3
+--> UpdateObj1
+end
+```

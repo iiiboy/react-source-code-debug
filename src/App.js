@@ -70,10 +70,16 @@ class CC extends React.PureComponent {
     this.formRef = React.createRef();
   }
 
+  handleClick = () => {
+    this.setState({age: 24})
+    this.forceUpdate();
+  }
+
   componentWillReceiveProps(nextProps) {
     this.setState({
       name: "zwx",
     });
+
   }
 
   render() {
@@ -123,11 +129,12 @@ class CC extends React.PureComponent {
 
 function FCC() {
   const [age, setAge] = useState(23);
+  const [s, setS] = useState('x')
 
   const handleClick = React.useCallback(() => {
-    setAge(age + 1);
-    setAge(age + 1);
-    setAge(age + 1);
+    setAge(prev => prev + 1);
+    setAge(prev => {setS('')});
+    setAge(prev => prev + 1);
   }, [age]);
 
   return (
@@ -173,7 +180,7 @@ function App() {
   }, []);
 
   return (
-    <main>
+    <><main>
       {/*<CC />*/}
       {/*<FCC number={count} />*/}
       <FCC/>
@@ -181,6 +188,10 @@ function App() {
       <div>hello</div>
       <p>world</p>
     </main>
+      <div><p></p></div>
+    </>
+
+
   );
 
   // 事件系统

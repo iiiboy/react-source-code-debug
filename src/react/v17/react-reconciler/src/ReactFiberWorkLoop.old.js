@@ -391,9 +391,11 @@ export function getCurrentTime() {
   return now();
 }
 
+// *获取此次更新的优先级
 export function requestUpdateLane(fiber: Fiber): Lane {
   // Special cases
   const mode = fiber.mode;
+  // *v17 中 BlockingMode ConcurrentMode 分别对应不同的渲染方式 一个是 createBlockingRoot 一个是 createRoot 因为我们当前是 legacy 模式，所以直接返回 SyncLane
   if ((mode & BlockingMode) === NoMode) {
     return (SyncLane: Lane);
   } else if ((mode & ConcurrentMode) === NoMode) {
@@ -555,6 +557,8 @@ export function scheduleUpdateOnFiber(
   checkForNestedUpdates();
   warnAboutRenderPhaseUpdatesInDEV(fiber);
 
+  // 1 将优先级合并到当前 Fiber 节点的 lanes 属性中
+  // 2 将优先级合并到父级节点的 childLanes 属性中（告诉父节点他的子节点有多少条赛道要跑） 注意使用了 while 循环，是合并到所有的父级节点了
   const root = markUpdateLaneFromFiberToRoot(fiber, lane);
   if (root === null) {
     warnAboutUpdateOnUnmountedFiberInDEV(fiber);
@@ -597,8 +601,10 @@ export function scheduleUpdateOnFiber(
 
   if (lane === SyncLane) {
     if (
+      // *本次更新还在 '未批量更新' 中
       // Check if we're inside unbatchedUpdates
       (executionContext & LegacyUnbatchedContext) !== NoContext &&
+      // *且本次更新不是 render 或 commit
       // Check if we're not already rendering
       (executionContext & (RenderContext | CommitContext)) === NoContext
     ) {
@@ -606,12 +612,12 @@ export function scheduleUpdateOnFiber(
       // 调用performSyncWorkOnRoot开始执行同步任务
 
       // Register pending interactions on the root to avoid losing traced interaction data.
-      schedulePendingInteractions(root, lane);
+      schedulePendingInteractions(root, lane);// schedule pending interactions 调度待处理的交互
 
       // This is a legacy edge case. The initial mount of a ReactDOM.render-ed
       // root inside of batchedUpdates should be synchronous, but layout updates
       // should be deferred until the end of the batch.
-      performSyncWorkOnRoot(root);
+      performSyncWorkOnRoot(root);// 执行同步任务
     } else {
       // 如果是本次更新是同步的，但是当前处在同步更新过程中，
       // 因为无法打断，所以调用ensureRootIsScheduled

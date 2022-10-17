@@ -333,6 +333,7 @@ class Test extends React.Component {
 
 // !最重要的是这里的 contextType
 Test.contextType = ThemeContext;// !注意：这里的 contextType 赋值的是 ThemeContext 并不是 Provider 或 Consumer
+// !注意 FC 也可以通过这种方法使用 Context
 ```
 
 ---
