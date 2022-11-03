@@ -2,7 +2,7 @@
 
 生命周期的分析和图，具体看掘金小册，目前没时间放上来。
 
-![lifecycle](lifecycle.jpeg);
+![lifecycle](lifecycle.jpeg)
 
 ### 如何判断是否可以重新渲染
 

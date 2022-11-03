@@ -91,6 +91,7 @@ export const now =
   initialTimeMs < 10000 ? Scheduler_now : () => Scheduler_now() - initialTimeMs;
 
 export function getCurrentPriorityLevel(): ReactPriorityLevel {
+  // *Scheduler_getCurrentPriorityLevel 这个函数直接返回了 currentPriorityLevel 这个全局变量。
   switch (Scheduler_getCurrentPriorityLevel()) {
     case Scheduler_ImmediatePriority:
       return ImmediatePriority;

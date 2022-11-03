@@ -118,6 +118,11 @@ export function setCurrentUpdateLanePriority(newLanePriority: LanePriority) {
 // Used by getHighestPriorityLanes and getNextLanes:
 let return_highestLanePriority: LanePriority = DefaultLanePriority;
 
+/**
+ * @desc 通过一个一个 if 找出最高优先级的赛道，并且进行返回。 注意 return_highestLanePriority 将在这个函数中进行赋值
+ * @param lanes
+ * @return {Lanes|Lane|number}
+ */
 function getHighestPriorityLanes(lanes: Lanes | Lane): Lanes {
   // 相关commit https://github.com/facebook/react/pull/19302
   // 该函数的目的是找到对应优先级范围内优先级最高的那一批lanes
@@ -263,6 +268,12 @@ export function lanePriorityToSchedulerPriority(
   }
 }
 
+/**
+ * @desc 返回最高的优先级；因为此处返回的 lanes 将会作为全局渲染的优先级；高优先级任务插队，也在这里进行处理；
+ * @param root
+ * @param wipLanes
+ * @return {Lanes}
+ */
 export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
   // 该函数从root.pendingLanes中找出优先级最高的lane
 
@@ -277,8 +288,11 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
   let nextLanes = NoLanes;
   let nextLanePriority = NoLanePriority;
 
+  // expiredLanes 指的是过期的 lane
   const expiredLanes = root.expiredLanes;
+  // suspendedLanes 指的是挂起的 lane 应该跟 Suspense 组件有关
   const suspendedLanes = root.suspendedLanes;
+  // TODO 暂时还不清楚 我的猜测是，suspended 是 Suspense 组件的 lanes，Suspense 加载完成后的 lane 就是 pingedLanes 只是猜测
   const pingedLanes = root.pingedLanes;
 
   // Check if any work has expired.
@@ -300,19 +314,26 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
     // 为空，那么就说明需要处理这些被挂起的任务了。将它们重启。pingedLanes是那些被挂起
     // 任务的优先级
 
+    // *NonIdleLanes 指的是非空闲的赛道之和； NonIdleLanes = 0b0000111111111111111111111111111
+    // nonIdlePendingLanes -> 当前 pendingLanes 中所有的非空闲赛道
     const nonIdlePendingLanes = pendingLanes & NonIdleLanes;
     if (nonIdlePendingLanes !== NoLanes) {
       const nonIdleUnblockedLanes = nonIdlePendingLanes & ~suspendedLanes;
-      // nonIdleUnblockedLanes也就是未被阻塞的那些lanes，未被阻塞，那就应该去处理。
-      // 它等于所有未闲置的lanes中除去被挂起的那些lanes。& ~ 相当于删除
+      // !nonIdleUnblockedLanes也就是未被阻塞的那些lanes，未被阻塞，那就应该去处理。
+      // !它等于所有未闲置的lanes中除去被挂起的那些lanes。& ~ 相当于删除
       if (nonIdleUnblockedLanes !== NoLanes) {
         // nonIdleUnblockedLanes不为空，说明如果有任务需要被处理。
-        // 那么从这些任务中挑出最重要的
+        // *那么从这些任务中挑出最重要的，也就是优先级最高的*一条*赛道
         nextLanes = getHighestPriorityLanes(nonIdleUnblockedLanes);
+        // *return_highestLanePriority 在 getHighestPriorityLanes 将会进行赋值，值为 lane 对应的 priority
+        // *比如 最高优先级的赛道是 SyncLane 那么 return_highestLanePriority 值就是对应的 SyncLanePriority
+        // *在 v17.0.0 中 SyncLanePriority 值为 15 注意 LanePriority 与 lane 不同，LanePriority 越大优先级越高
         nextLanePriority = return_highestLanePriority;
       } else {
-        // 如果目前没有任务需要被处理，就从正在那些被挂起的lanes中找到优先级最高的
-        const nonIdlePingedLanes = nonIdlePendingLanes & pingedLanes;
+        // *如果目前没有 非空闲的 未被挂起的 任务需要被处理，就从正在那些 非空闲的 被挂起的 lanes中找到优先级最高的
+        // !注意：「非空闲的 被挂起的」 可能是有误的，因为 nonIdlePendingLanes 与 pingedLanes 的交集, 如果上面的猜测正确的话，那么 Suspense 还没有加载完成，就先不管他，那么加载完成的 pingedLanes 肯定需要管。
+        // TODO 但是也就有一个疑问，如果 pingedLanes 真的指加载完成的 Suspense，那么一直在这个 else 等待肯定是不行的。那么是否还有其他如何处理 pingedLanes 的地方？
+        const nonIdlePingedLanes = nonIdlePendingLanes & pingedLanes;// 注意这里是 pingedLanes 不是 pendingLanes
         if (nonIdlePingedLanes !== NoLanes) {
           nextLanes = getHighestPriorityLanes(nonIdlePingedLanes);
           nextLanePriority = return_highestLanePriority;
@@ -320,13 +341,14 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
       }
     } else {
       // The only remaining work is Idle.
-      // 剩下的任务是闲置的任务。unblockedLanes是闲置任务的lanes
+      // !与上面的类似，如果没有 未闲置的 赛道，那么就来找 闲置的 没有被挂起的 赛道。
       const unblockedLanes = pendingLanes & ~suspendedLanes;
       if (unblockedLanes !== NoLanes) {
         // 从这些未被阻塞的闲置任务中挑出最重要的
         nextLanes = getHighestPriorityLanes(unblockedLanes);
         nextLanePriority = return_highestLanePriority;
       } else {
+        // !闲置的 pinged 的赛道
         if (pingedLanes !== NoLanes) {
           // 找到被挂起的那些任务中优先级最高的
           nextLanes = getHighestPriorityLanes(pingedLanes);
@@ -337,7 +359,7 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
   }
 
   if (nextLanes === NoLanes) {
-    // 找了一圈之后发现nextLanes是空的，return一个空
+    // !找了一圈之后发现nextLanes是空的，return一个空
     // This should only be reachable if we're suspended
     // TODO: Consider warning in this path if a fallback timer is not scheduled.
     return NoLanes;
@@ -360,15 +382,19 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
    * 渲染的优先级高的时候，才去打断（高优先级任务插队）
   * */
 
+  // wipLanes 是参数
   if (
     wipLanes !== NoLanes &&
     wipLanes !== nextLanes &&
     // If we already suspended with a delay, then interrupting is fine. Don't
     // bother waiting until the root is complete.
-    (wipLanes & suspendedLanes) === NoLanes
+    (wipLanes & suspendedLanes) === NoLanes// wipLanes 不包含挂起的车道
   ) {
+    // *获取 wipLanes 的最高优先级
     getHighestPriorityLanes(wipLanes);
     const wipLanePriority = return_highestLanePriority;
+    // *前面说过 LanePriority 越大优先级最大
+    // *如果 wipLanePriority 优先级更大的话 直接返回 wipLanes 也就是*高优先级插队了*
     if (nextLanePriority <= wipLanePriority) {
       return wipLanes;
     } else {
@@ -385,7 +411,7 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
   // when multiple updates have the same source, and we only want to respond to
   // the most recent event from that source.
   /*
-    * 当一个lane禁止在不包括其他lane的批处理中渲染时，它被称为与另一个lane纠缠在一起。通常，当多个更
+    * 当一个 lane 禁止在不包括其他 lane 的批处理中渲染时，它被称为与另一个lane纠缠在一起。通常，当多个更
     * 新具有相同的源时，我们会这样做，并且我们只想响应来自该源的最新事件。
     * */
 
@@ -409,6 +435,7 @@ export function getNextLanes(root: FiberRoot, wipLanes: Lanes): Lanes {
   /*
     * 对于那些纠缠在语义上很重要的例外，比如useMutableSource，我们应该确保在应用纠缠时没有部分工作。
     * */
+  // TODO 不是很清楚
   const entangledLanes = root.entangledLanes;
   if (entangledLanes !== NoLanes) {
     const entanglements = root.entanglements;
@@ -445,6 +472,12 @@ export function getMostRecentEventTime(root: FiberRoot, lanes: Lanes): number {
   return mostRecentEventTime;
 }
 
+/**
+ * @desc 更具优先级去计算过期时间，v17 中，>= InputContinuousLanePriority 过期时间是 += 250ms, >= TransitionPriority 过期时间是 += 5000ms 其他的优先级没有过期时间，也就是可能永远也不会执行
+ * @param lane
+ * @param currentTime
+ * @return {number}
+ */
 function computeExpirationTime(lane: Lane, currentTime: number) {
 /**
  *   这个函数是计算lane的过期时间的，与饥饿问题相关
@@ -474,11 +507,16 @@ function computeExpirationTime(lane: Lane, currentTime: number) {
     return currentTime + 5000;
   } else {
     // Anything idle priority or lower should never expire.
-    // 任何空闲或更低的优先级都不应该过期。
+    // 任何空闲或更低的优先级都不应该过期。可能永远也不会执行
     return NoTimestamp;
   }
 }
 
+/**
+ * @desc 计算 root.pendingLanes 每条符合条件的赛道的过期时间，并且放到 root.expireEventTimes 数组的对应位置
+ * @param root
+ * @param currentTime
+ */
 export function markStarvedLanesAsExpired(
   root: FiberRoot,
   currentTime: number,
@@ -511,6 +549,7 @@ export function markStarvedLanesAsExpired(
     // pickArbitraryLaneIndex是找到lanes中最靠左的那个1在lanes中的index
     // 意味着标记饥饿lane是从优先级最低的部分开始的
 
+    // *获取 pendingLanes 中优先级最低的赛道的 index
     const index = pickArbitraryLaneIndex(lanes);
     const lane = 1 << index;
     // 上边两行的计算过程举例如下：
@@ -523,15 +562,15 @@ export function markStarvedLanesAsExpired(
     //    lane = 0b0000000000000000000000000001000
 
     const expirationTime = expirationTimes[index];
-    if (expirationTime === NoTimestamp) {
+    if (expirationTime === NoTimestamp) {// 如果为 NoTimestamp 那么说明这个赛道还没有注册过期时间
       // Found a pending lane with no expiration time. If it's not suspended, or
       // if it's pinged, assume it's CPU-bound. Compute a new expiration time
       // using the current time.
-      // 发现一个没有过期时间并且待处理的lane，如果它没被挂起或者被触发，那么将它视为CPU密集型的任务，
-      // 用当前时间计算一个新的过期时间
+      // *发现一个「还没有注册过期时间」并且「待处理的lane」，且如果它「没被挂起」或者「已经被触发」，那么将它视为CPU密集型的任务，用当前时间计算一个新的过期时间
+      // *感觉这里的判断，更能够说明在 getNextLanes 中的猜测了，即使它被挂起了，但是被触发，依然可以进入 if 计算过期时间。
       if (
-        (lane & suspendedLanes) === NoLanes ||
-        (lane & pingedLanes) !== NoLanes
+        (lane & suspendedLanes) === NoLanes ||// 如果当前 lane 没有被挂起
+        (lane & pingedLanes) !== NoLanes// *如果当前 lane 已经被触发
       ) {
         // Assumes timestamps are monotonically increasing.
         // 实际上这里是在计算当前lane的过期时间
@@ -684,6 +723,12 @@ function getHighestPriorityLane(lanes: Lanes) {
   return lanes & -lanes;
 }
 
+/**
+ * @desc 返回优先级最低的赛道
+ * @example 0b001011 -> 0b001000
+ * @param lanes
+ * @return {Lanes|number}
+ */
 function getLowestPriorityLane(lanes: Lanes): Lane {
   // This finds the most significant non-zero bit.
   // 找到lanes中优先级最低的那一个lane
@@ -693,15 +738,22 @@ function getLowestPriorityLane(lanes: Lanes): Lane {
    * 开头的 0 的个数, 比如 0b0000000000000000000000011100000, 开头的
    * 0 的个数是 24 个, 则
    * Math.clz32(0b0000000000000000000000011100000) 返回 24.
+   * 31 - 24 = 7 恰好就是从右往左的最后一个 1 的索引
    *        1 => 0b0000000000000000000000000000001
-   * 1 << 24  =  0b0000001000000000000000000000000
-   *
+   * 1 << 7  =  0b0000001000000000000000010000000
+   * 此时的 0b0000001000000000000000010000000 就是最小的优先级，因为 lane 中值越小，优先级越大
    * */
 
   const index = 31 - clz32(lanes);
   return index < 0 ? NoLanes : 1 << index;
 }
 
+/**
+ * @desc 返回相同或更高优先级的赛道
+ * @example 0b001011 -> 0b001111
+ * @param lanes
+ * @return {number}
+ */
 function getEqualOrHigherPriorityLanes(lanes: Lanes | Lane): Lanes {
   /**
    *
@@ -751,7 +803,7 @@ export function isSubsetOfLanes(set: Lanes, subset: Lanes | Lane) {
     * 校验set中有没有subset
     * 按位或 &：对每个 bit 执行 & 操作, 如果相同位数的 bit 都为 1, 则结果为 1
     *
-    *         set   &  subset === subset
+    *         set  &  subset === subset
     * 二进制  10    &  2      = 2
     * 十进制  1010  &  0010   = 0010
     *
@@ -839,20 +891,21 @@ export function markRootUpdated(
   const higherPriorityLanes = updateLane - 1; // Turns 0b1000 into 0b0111
   // (before) suspendedLanes 0b10100
   //                         &
-  // higherPriorityLanes     0b01111
+  // higherPriorityLanes     0b10011
   // ----------------------------------
-  // (after)  suspendedLanes 0b00100
-  // 目的是剔除掉suspendedLanes 和 pingedLanes中优先级低于本次更新优先级（updateLane）的lane
+  // (after)  suspendedLanes 0b10000  这样就只剩下比 0b00100 高的优先级了，
+  // 当 suspendedLanes, pingedLanes 进行 & 运算时，也就会去掉这两个 lanes 的 "同等或较低优先级"
   // 实现上方注释中的 “取消同等或较低优先级的更新。”
   root.suspendedLanes &= higherPriorityLanes;
   root.pingedLanes &= higherPriorityLanes;
 
-  /*
-  * 假设 lanes：0b000100
-  * 那么eventTimes是这种形式： [ -1, -1, -1, 44573.3452, -1, -1 ]
-  * 用一个数组去存储eventTimes，-1表示空位，非-1的位置与lanes中的1的位置相同
-  * */
-  const eventTimes = root.eventTimes;
+  /**
+   * *假设 lanes：0b000100
+   * *那么eventTimes是这种形式： [ -1, -1, -1, 44573.3452, -1, -1 ]
+   * *用一个数组去存储eventTimes，-1表示空位，非-1的位置与lanes中的1的位置相同
+   * */
+  const eventTimes = root.eventTimes;// 因为有 31 条赛道，所以 eventTimes 是一个 31 长度的数组
+  // *计算获得 lane 对应的 index，位运算的解释可以看 调度与调和.md -> 参考资料第三个
   const index = laneToIndex(updateLane);
   // We can always overwrite an existing timestamp because we prefer the most
   // recent event, and we assume time is monotonically increasing.

@@ -195,6 +195,11 @@ export function createUpdate(eventTime: number, lane: Lane): Update<*> {
   return update;
 }
 
+/**
+ * @desc 将 update 对象放到 fiber.updateQueue.shared.pending 中去，class 组件待处理的更新就放在这个地方。 pending 是一个循环链表
+ * @param fiber
+ * @param update
+ */
 export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
   const updateQueue = fiber.updateQueue;
   if (updateQueue === null) {
@@ -205,6 +210,7 @@ export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
   // *所有的更新队列都放到了 shared 里面去。与 Hooks 有所不同
   const sharedQueue: SharedQueue<State> = (updateQueue: any).shared;
   const pending = sharedQueue.pending;
+  // 构建循环链表
   if (pending === null) {
     // This is the first update. Create a circular list.
     update.next = update;

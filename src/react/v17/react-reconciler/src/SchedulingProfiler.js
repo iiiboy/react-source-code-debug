@@ -108,9 +108,14 @@ export function markPassiveEffectsStopped(): void {
   }
 }
 
+/**
+ * @desc 最终调用了 performance.mark 会记录一个时间戳，可以使用 getEntriesByName 进行获取，performance 具体解释见 mdn
+ * @param lanes
+ */
 export function markRenderStarted(lanes: Lanes): void {
   if (enableSchedulingProfiler) {
     if (supportsUserTiming) {
+      // https://developer.mozilla.org/zh-CN/docs/Web/API/Performance/mark
       performance.mark(`--render-start-${formatLanes(lanes)}`);
     }
   }

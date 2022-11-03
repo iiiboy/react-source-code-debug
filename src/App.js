@@ -129,13 +129,12 @@ class CC extends React.PureComponent {
 
 function FCC() {
   const [age, setAge] = useState(23);
-  const [s, setS] = useState('x')
 
   const handleClick = React.useCallback(() => {
     setAge(prev => prev + 1);
-    setAge(prev => {setS('')});
     setAge(prev => prev + 1);
-  }, [age]);
+    setAge(prev => prev + 1);
+  }, []);
 
   return (
     <div>
