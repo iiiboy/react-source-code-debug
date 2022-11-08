@@ -1670,7 +1670,7 @@ function dispatchAction<S, A>(
   }
 
   const eventTime = requestEventTime();
-  // *当前是 legacy 模式，所以直接返回 NoLane
+  // *当前不是 BlockingMode，所以直接返回 SyncLane
   const lane = requestUpdateLane(fiber);
 
   const update: Update<S, A> = {
@@ -1693,7 +1693,8 @@ function dispatchAction<S, A>(
   queue.pending = update;
 
   const alternate = fiber.alternate;
-  // 如果 fiber 是当前正在更新的 fiber
+  // currentlyRenderingFiber 会在 renderWithHooks 中进行赋值，指向正在 render 中的 fiber
+  // *而 renderWithHooks 在 beginWork 中执行，所以 currentlyRenderingFiber 在调和过程中才有值，所以说如果我们通过点击时间进入这个 dispatchAction 这里的 if 是不成立的
   if (
     fiber === currentlyRenderingFiber ||
     (alternate !== null && alternate === currentlyRenderingFiber)
@@ -1704,13 +1705,17 @@ function dispatchAction<S, A>(
     didScheduleRenderPhaseUpdateDuringThisPass =
       didScheduleRenderPhaseUpdate = true;
   } else {
+    // *fiber.lanes 默认是为 NoLanes 的，但是在 markUpdateLaneFromFiberToRoot 中，将会对 fiber.lanes 赋值
     if (
-      fiber.lanes === NoLanes &&
+      fiber.lanes === NoLanes &&// 那么这里就是 fiber 还没有待处理的更新时
       (alternate === null || alternate.lanes === NoLanes)
     ) {
       // The queue is currently empty, which means we can eagerly compute the
       // next state before entering the render phase. If the new state is the
       // same as the current state, we may be able to bail out entirely.
+      // *进入这个 if 就说明「当前 fiber 不会引起调度调和等操作」，因为 lanes 都为 NoLanes，所以我们就需要在这里计算值，如果与之前的值相同，那么我们就可以直接返回，从而跳过 scheduleUpdateOnFiber，算是一种优化。
+      // *只要有一个 Update 需要调度，那么后续的 Update 都不会进入这个 if，直接进入 scheduleUpdateOnFiber
+      // !但是也要进行注意，因为这个 Update 确实放到了 queue.pending 里面，这些 update 将会在 updateReducer 时进行处理。
       const lastRenderedReducer = queue.lastRenderedReducer;
       if (lastRenderedReducer !== null) {
         let prevDispatcher;

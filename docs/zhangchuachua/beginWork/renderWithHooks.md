@@ -442,13 +442,14 @@ function dispatchAction<S, A>(
     didScheduleRenderPhaseUpdateDuringThisPass =
       didScheduleRenderPhaseUpdate = true;
   } else {
-    // TODO 在这次的测试代码中，只有第一次 setState 的 lanes === NoLanes 所以后面两次都不会进入这个 if 可能与批量更新有关，还不清楚，在下面的总结中，说明了这个
+     // *fiber.lanes 默认是为 NoLanes 的，但是在 markUpdateLaneFromFiberToRoot 中，将会对 fiber.lanes 赋值
     if (
-      fiber.lanes === NoLanes &&
+      fiber.lanes === NoLanes &&// 那么这里就是 fiber 还没有待处理的更新时
       (alternate === null || alternate.lanes === NoLanes)
     ) {
-
-      // *上一次的 reducer
+       // *进入这个 if 就说明「当前 fiber 不会引起调度调和等操作」，因为 lanes 都为 NoLanes，所以我们就需要在这里计算值，如果与之前的值相同，那么我们就可以直接返回，从而跳过 scheduleUpdateOnFiber，算是一种优化。
+       // *只要有一个 Update 需要调度，那么后续的 Update 都不会进入这个 if，直接进入 scheduleUpdateOnFiber
+       // !但是也要进行注意，因为这个 Update 确实放到了 queue.pending 里面，这些 update 将会在 updateReducer 时进行处理。
       const lastRenderedReducer = queue.lastRenderedReducer;
       if (lastRenderedReducer !== null) {
         let prevDispatcher;

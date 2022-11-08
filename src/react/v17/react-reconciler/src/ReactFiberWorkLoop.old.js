@@ -395,10 +395,11 @@ export function getCurrentTime() {
 export function requestUpdateLane(fiber: Fiber): Lane {
   // Special cases
   const mode = fiber.mode;
-  // *v17 中 BlockingMode ConcurrentMode 分别对应不同的渲染方式 一个是 createBlockingRoot 一个是 createRoot 因为我们当前是 legacy 模式，所以直接返回 SyncLane
-  if ((mode & BlockingMode) === NoMode) {
+  // *可以鼠标中键点击 BlockingMode 查看，一共有 六种 mode，NoMode StrictMode BlockingMode ConCurrentMode ProfileMode DebugTracingMode
+  // ?mode 可以进行 | 操作吗，也就是包含多种 Mode 吗？
+  if ((mode & BlockingMode) === NoMode) {// 如果不是 BlockingMode 直接返回 SyncLane, 还有可能是其他五种
     return (SyncLane: Lane);
-  } else if ((mode & ConcurrentMode) === NoMode) {
+  } else if ((mode & ConcurrentMode) === NoMode) {// 如果不是 ConcurrentMode, 结合
     return getCurrentPriorityLevel() === ImmediateSchedulerPriority
       ? (SyncLane: Lane)
       : (SyncBatchedLane: Lane);
@@ -793,6 +794,14 @@ function ensureRootIsScheduled(root: FiberRoot, currentTime: number) {
     // 和 newCallbackPriority不相等，说明newCallbackPriority 一定大于 existingCallbackPriority
     // 所以要取消掉原有的低优先级任务，相等的话说明没必要再重新调度一个，直接复用已有的任务
     // 去做更新
+    /**
+     * *之前有一个问题，在 batchedEventUpdates 里面，将 isBatchingEventUpdates 修改为 true。目前确实没有发现这个参数的作用
+     * !批量更新的核心点在这里, 如果「已存在的优先级」，与「当前优先级」相等，那么就直接返回。
+     *
+     * function handleClick() { setCount(count + 1); setCount(count + 1); setCount(count + 1); }
+     *
+     * *函数中调用了 3 次 setCount 那么三次的「优先级」就是相同的，那么后两次的 setCount 都会进入这里，比较优先级，并且直接返回。
+     */
     if (existingCallbackPriority === newCallbackPriority) {
       // The priority hasn't changed. We can reuse the existing task. Exit.
       return;

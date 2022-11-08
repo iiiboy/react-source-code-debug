@@ -120,6 +120,8 @@ if (
   const maxYieldInterval = 300;
   let needsPaint = false;
 
+  // *这是一个特别新的浏览器 api 兼容性见：https://caniuse.com/?search=navigator.scheduling
+  // *可以先不管，一般都是用的 else 中的 shouldYieldToHost
   if (
     enableIsInputPending &&
     navigator !== undefined &&
@@ -158,6 +160,7 @@ if (
     // `isInputPending` is not available. Since we have no way of knowing if
     // there's pending input, always yield at the end of the frame.
     shouldYieldToHost = function() {
+      // *当前时间 > 死亡时间时，说明现在已经该结束了，所以返回 true 表示让出主线程
       return getCurrentTime() >= deadline;
     };
 
@@ -182,12 +185,16 @@ if (
     }
   };
 
+  /**
+   * @desc onmessage 的事件处理函数
+   */
   const performWorkUntilDeadline = () => {
     if (scheduledHostCallback !== null) {
       const currentTime = getCurrentTime();
       // Yield after `yieldInterval` ms, regardless of where we are in the vsync
       // cycle. This means there's always time remaining at the beginning of
       // the message event.
+      // *更新 deadline
       deadline = currentTime + yieldInterval;
       const hasTimeRemaining = true;
       try {
@@ -197,11 +204,14 @@ if (
           currentTime,
         );
         if (!hasMoreWork) {
+          // *标记 MessageChannel 回调是否在运行
           isMessageLoopRunning = false;
           scheduledHostCallback = null;
         } else {
           // If there's more work, schedule the next message event at the end
           // of the preceding one.
+          // *翻译：如果还有其他 work 那么前一个事件末尾「调度」下一个 message 事件
+          // ?
           port.postMessage(null);
         }
       } catch (error) {
@@ -222,9 +232,14 @@ if (
   const port = channel.port2;
   channel.port1.onmessage = performWorkUntilDeadline;
 
+  /**
+   * @desc 异步调度一个 callback，原理是将 callback 赋值给通过局部变量然后通过 MessageChannel 的 port.postMessage 触发 onmessage，onmessage 的事件处理函数将会去执行这个 callback. 因为 MessageChannel 是宏任务，所以将是异步的。
+   * @param callback
+   */
   requestHostCallback = function(callback) {
     scheduledHostCallback = callback;
     if (!isMessageLoopRunning) {
+      // *标记 MessageChannel 回调是否在运行
       isMessageLoopRunning = true;
       port.postMessage(null);
     }
@@ -234,12 +249,20 @@ if (
     scheduledHostCallback = null;
   };
 
+  /**
+   * @desc 如果是一个延迟任务，那么将会进入这个函数，使用 setTimeout 在一定时间后再进行调度
+   * @param callback
+   * @param ms
+   */
   requestHostTimeout = function(callback, ms) {
     taskTimeoutID = setTimeout(() => {
       callback(getCurrentTime());
     }, ms);
   };
 
+  /**
+   * @desc 清除 timeout，也就取消掉了 timeout 里面的任务
+   */
   cancelHostTimeout = function() {
     clearTimeout(taskTimeoutID);
     taskTimeoutID = -1;

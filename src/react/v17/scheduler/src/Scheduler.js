@@ -311,6 +311,7 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
   }
 
   var timeout;
+  // *根据优先级，计算 timeout
   switch (priorityLevel) {
     case ImmediatePriority:
       timeout = IMMEDIATE_PRIORITY_TIMEOUT;
@@ -351,7 +352,7 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
   // 如果是延迟任务则将 newTask 放入延迟调度队列（timerQueue）并执行 requestHostTimeout
   // 如果是正常任务则将 newTask 放入正常调度队列（taskQueue）并执行 requestHostCallback
 
-  if (startTime > currentTime) {
+  if (startTime > currentTime) {// 开始时间 > 当前时间，说明该任务是一个延迟任务
     // This is a delayed task.
     newTask.sortIndex = startTime;
     push(timerQueue, newTask);

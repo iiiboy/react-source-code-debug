@@ -71,7 +71,7 @@ class CC extends React.PureComponent {
   }
 
   handleClick = () => {
-    this.setState({age: 24})
+    this.setState({ age: 24 })
     this.forceUpdate();
   }
 
@@ -130,11 +130,11 @@ class CC extends React.PureComponent {
 function FCC() {
   const [age, setAge] = useState(23);
 
-  const handleClick = React.useCallback(() => {
-    setAge(prev => prev + 1);
-    setAge(prev => prev + 1);
-    setAge(prev => prev + 1);
-  }, []);
+  const handleClick = () => {
+    setAge(age + 1);
+    setAge(age - 1);
+    setAge(age + 2);
+  }
 
   return (
     <div>
@@ -179,14 +179,15 @@ function App() {
   }, []);
 
   return (
-    <><main>
-      {/*<CC />*/}
-      {/*<FCC number={count} />*/}
-      <FCC/>
-      {/*<CCC />*/}
-      <div>hello</div>
-      <p>world</p>
-    </main>
+    <>
+      <main>
+        {/*<CC />*/}
+        {/*<FCC number={count} />*/}
+        <FCC/>
+        {/*<CCC />*/}
+        <div>hello</div>
+        <p>world</p>
+      </main>
       <div><p></p></div>
     </>
 
