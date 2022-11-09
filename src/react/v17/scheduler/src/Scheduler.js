@@ -78,24 +78,29 @@ var isPerformingWork = false;
 var isHostCallbackScheduled = false;
 var isHostTimeoutScheduled = false;
 
+/**
+ * @desc 将 timerQueue 中过期的 timer 提出来，然后放到 taskQueue
+ * @param currentTime
+ */
 function advanceTimers(currentTime) {
   // Check for tasks that are no longer delayed and add them to the queue.
   // 检查过期任务队列中不应再被推迟的，放到taskQueue中
-  let timer = peek(timerQueue);
+  let timer = peek(timerQueue);// 获取堆顶
   while (timer !== null) {
     if (timer.callback === null) {
       // Timer was cancelled.
       pop(timerQueue);
-    } else if (timer.startTime <= currentTime) {
+    } else if (timer.startTime <= currentTime) {// 当前时间 > 开始时间，那么说明应该开始了
       // Timer fired. Transfer to the task queue.
-      pop(timerQueue);
+      pop(timerQueue);// peek 只是获取堆顶，pop 把这个 timer 弹出
       timer.sortIndex = timer.expirationTime;
-      push(taskQueue, timer);
+      push(taskQueue, timer);// 将 timer 押入正常队列 taskQueue
       if (enableProfiling) {
         markTaskStart(timer, currentTime);
         timer.isQueued = true;
       }
     } else {
+      // *因为是最小堆，堆顶就是 expirationTime 就是最小的，如果堆顶都没有过期的话，那么说明其他的也没有过期
       // Remaining timers are pending.
       return;
     }
@@ -125,20 +130,29 @@ function handleTimeout(currentTime) {
   }
 }
 
+/**
+ * @desc 在 reactV17.0.2 中，它可以看作是「调度任务」的起点，在它内部执行 workLoop
+ * @param hasTimeRemaining
+ * @param initialTime
+ * @return {boolean}
+ */
 function flushWork(hasTimeRemaining, initialTime) {
+  // ?这个 enableProfiling 经常看到，但是不知道有什么作用，可以默认为 true
   if (enableProfiling) {
     markSchedulerUnsuspended(initialTime);
   }
 
   // We'll need a host callback the next time work is scheduled.
+  // *当前正在执行调度的任务，所以标记为没有调度的回调
   isHostCallbackScheduled = false;
   if (isHostTimeoutScheduled) {
+    // ?取消掉延迟的调度任务，为什么要取消？如果调度了一个正常队列，又调度了一个延迟队列，那么执行正常队列的时候会取消掉延迟队列？为什么？会同时完成延迟队列中的任务吗？
     // We scheduled a timeout but it's no longer needed. Cancel it.
     isHostTimeoutScheduled = false;
     cancelHostTimeout();
   }
 
-  isPerformingWork = true;
+  isPerformingWork = true;// *标记为正在执行
   const previousPriorityLevel = currentPriorityLevel;
   try {
     if (enableProfiling) {
@@ -177,12 +191,12 @@ function workLoop(hasTimeRemaining, initialTime) {
     !(enableSchedulerDebugging && isSchedulerPaused)
   ) {
     if (
-      currentTask.expirationTime > currentTime &&
-      (!hasTimeRemaining || shouldYieldToHost())
+      currentTask.expirationTime > currentTime &&// 当前时间 < 过期时间 说明还没有过期
+      (!hasTimeRemaining || shouldYieldToHost())// 没有剩余时间 或者 应该让出主线程
     ) {
       // This currentTask hasn't expired, and we've reached the deadline.
       // 当前任务没有过期，但是已经到了时间片的末尾，需要中断循环
-      break;
+      break;// *同样的，因为 taskQueue 也是一个最小堆，当堆顶都没有过期时，其他的也就都没有过期
     }
     const callback = currentTask.callback;
     if (typeof callback === 'function') {
@@ -382,6 +396,8 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
     // wait until the next time we yield.
     // 调度一个主线程回调，如果已经执行了一个任务，等到下一次交还执行权的时候再执行回调。
     // 立即调度
+    // *isHostCallbackScheduled 用于判断当前是否有已调度的回调任务，如果为 true 就说明有
+    // *isPerformingWork 判断现在是否正在执行任务，因为「调度是异步的」
     if (!isHostCallbackScheduled && !isPerformingWork) {
       isHostCallbackScheduled = true;
       requestHostCallback(flushWork);
