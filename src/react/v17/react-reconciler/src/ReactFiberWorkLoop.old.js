@@ -1082,7 +1082,7 @@ function performSyncWorkOnRoot(root) {
     'Should not already be working.',
   );
 
-  // TODO 解释
+  // ?解释
   flushPassiveEffects();
 
   let lanes;
@@ -1092,7 +1092,7 @@ function performSyncWorkOnRoot(root) {
     root === workInProgressRoot &&
     includesSomeLane(root.expiredLanes, workInProgressRootRenderLanes)
   ) {
-    // *root === wipRoot 且 root.expiredLanes 不包含 wipRootRenderLanes 的话进入这个 if
+    // *root === wipRoot 且 root.expiredLanes 包含 wipRootRenderLanes 的话进入这个 if
     // There's a partial tree, and at least one of its lanes has expired. Finish
     // rendering it before rendering the rest of the expired work.
     lanes = workInProgressRootRenderLanes;

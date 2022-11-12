@@ -208,12 +208,12 @@ function workLoop(hasTimeRemaining, initialTime) {
       currentTime = getCurrentTime();
       if (typeof continuationCallback === 'function') {
         // 检查callback的执行结果返回的是不是函数，如果返回的是函数，则将这个函数作为当前任务新的回调。
-        // concurrent模式下，callback是performConcurrentWorkOnRoot，其内部根据当前调度的任务
-        // 是否相同，来决定是否返回自身，如果相同，则说明还有任务没做完，返回自身，其作为新的callback
-        // 被放到当前的task上。while循环完成一次之后，检查shouldYieldToHost，如果需要让出执行权，
-        // 则中断循环，走到下方，判断currentTask不为null，返回true，说明还有任务，回到performWorkUntilDeadline
-        // 中，判断还有任务，继续port.postMessage(null)，调用监听函数performWorkUntilDeadline，
-        // 继续执行任务
+        // *concurrent模式下，callback 是 performConcurrentWorkOnRoot，该函数内部根据当前调度的任务是否相同，来决定是否返回自身
+        // *如果相同，则说明还有任务没做完，返回自身，其作为新的callback被放到当前的task上
+        // *performConcurrentWorkOnRoot 每次 while循环完成一次之后，都会检查shouldYieldToHost
+        // *如果需要让出执行权，则中断循环，走到下方，判断currentTask 是否 null 的地方，返回true，说明还有任务
+        // *回到 performWorkUntilDeadline 中，判断还有任务，继续port.postMessage(null)，调用监听函数performWorkUntilDeadline，继续执行任务
+        // performWorkConcurrentWorkOnRoot 在 ReactFiberWorkLoop.js 中
         currentTask.callback = continuationCallback;
         markTaskYield(currentTask, currentTime);
       } else {

@@ -794,6 +794,12 @@ function laneToIndex(lane: Lane) {
   return pickArbitraryLaneIndex(lane);
 }
 
+/**
+ * @desc return a & b !== NoLanes， a & b !== 0 那么说明两者有重合的赛道，也就是说 a 内包含 b
+ * @param a
+ * @param b
+ * @return {boolean}
+ */
 export function includesSomeLane(a: Lanes | Lane, b: Lanes | Lane) {
   return (a & b) !== NoLanes;
 }
