@@ -136,11 +136,20 @@ function FCC() {
     setAge(age + 2);
   }
 
+  useEffect(() => {
+    const btn = document.getElementById('btn');
+    btn.addEventListener('click', handleClick);
+
+    return () => {
+      btn.removeEventListener('click', handleClick);
+    }
+  }, [age]);
+
   return (
     <div>
       <h2>this is FC</h2>
       <p>{age}</p>
-      <button onClick={handleClick}>FCC Click</button>
+      <button id="btn">FCC Click</button>
     </div>
   );
 }

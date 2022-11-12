@@ -695,9 +695,10 @@ function mountEffect(
   // *useLayoutEffect 实际执行也是 mountEffectImpl
   // *useLayoutEffect 传入的参数不同，第一个和第二个参数分别为： UpdateEffect, HookLayout
   return mountEffectImpl(
-    UpdateEffect | PassiveEffect,
-    HookPassive,
-    create,
+    // PassiveEffect 其实就是 Passive 标记使用了 useEffect 的函数组件
+    UpdateEffect | PassiveEffect,// *这个参数是 fiberFlags 用于标记 fiber 的副作用。
+    HookPassive,// *这个参数是 hookFlags 用于指明当前是哪个 hook 比如 layout 是 useLayoutEffect, passive 指的是 useEffect
+    create,// 传入的函数
     deps
   );
 }
@@ -706,10 +707,10 @@ function mountEffectImpl(fiberFlags, hookFlags, create, deps): void {
   // *这个上面说过，用于创建 Hook 对象，连接 hooks 链表。
   const hook = mountWorkInProgressHook();
   const nextDeps = deps === undefined ? null : deps;
-  // !这里有所不一样了，这里会对 wip.flags 赋值
+  // 这里有所不一样了，这里会对 wip.flags 赋值, 指定目前 fiber 的副作用
   // TODO flag 就是副作用，源文件位于 ReactFiberFlag，在 commit 阶段，react 会统一处理这些副作用，比如 DOM 操作等等，在 reconcileChildren 哪里也看到过，目前还不熟悉
   currentlyRenderingFiber.flags |= fiberFlags;
-  // *这里 memoizedState 的值需要 pushEffect 处理。
+  // *这里 memoizedState 的值其实就是一个 effect 对象，pushEffect 将会返回一个 effect 对象
   hook.memoizedState = pushEffect(
     HookHasEffect | hookFlags,
     create,
@@ -757,8 +758,6 @@ function pushEffect(tag, create, destroy, deps) {
 }
 ```
 
-所以在 useEffect 就只是将副作用放到了 updateQueue 里面，然后在 commit 阶段进行 **调度** 执行.
-
 ```jsx
 React.useEffect(()=>{
     console.log('第一个effect')
@@ -775,6 +774,22 @@ React.useEffect(()=>{
 上面的 jsx 在 updateQueue 中会变成这样。
 
 ![useEffect-updateQueue](useEffect-updateQueue.jpeg)
+
+> 副作用何时调用？
+
+useEffect 中的副作用，也就是传入的函数，并不会在 commit 阶段执行，因为此时函数组件并未被挂载到 dom 中。
+
+副作用其实会被「异步调用」，也就是「调度」中学到的 [performWorkUntilDeadline](src/react/v17/scheduler/src/forks/SchedulerHostConfig.default.js) 函数中执行回调，然后经过一系列的函数嵌套，最终进入 [flushPassiveEffectsImpl](src/react/v17/react-reconciler/src/ReactFiberWorkLoop.old.js) 。在这个函数中，将会真正执行副作用函数。
+
+调用副作用函数的同时，会接收副作用函数的返回值，并且赋值给 effect 对象的 destroy 属性。也就是函数组件卸载时将会执行的函数。
+
+还有一点，这一轮中，需要调用的所有的 副作用函数 其实是一个数组，格式是 [effect1, effect1Fiber, effect2, effect2Fiber] 前一个是 effect 对象，后面的就是它的 fiber。然后使用一个 for 循环，每次循环 index+=2；
+
+因为通过 for 循环执行副作用，那么就说明了，所有的 副作用函数，将会同步，按照顺序执行。执行的顺序是：「由内向外」
+
+> destroy 何时调用？
+
+destroy 其实也是在 flushPassiveEffectsImpl 函数中调用的；并且，会先调用 destroy 函数后，再执行**副作用函数**
 
 ### 更新时
 

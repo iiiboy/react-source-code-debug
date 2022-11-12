@@ -293,6 +293,12 @@ function throwInvalidHookError() {
   );
 }
 
+/**
+ * @desc 除了 deps 为 null 直接返回 false，其他的就是循环 deps 数组，一个一个比较就完事
+ * @param nextDeps
+ * @param prevDeps
+ * @return {boolean}
+ */
 function areHookInputsEqual(
   nextDeps: Array<mixed>,
   prevDeps: Array<mixed> | null
@@ -1158,6 +1164,7 @@ function rerenderState<S>(
 }
 
 function pushEffect(tag, create, destroy, deps) {
+  // 初始化一个 effect 对象
   const effect: Effect = {
     tag,
     create,
@@ -1168,11 +1175,14 @@ function pushEffect(tag, create, destroy, deps) {
   };
   let componentUpdateQueue: null | FunctionComponentUpdateQueue =
     (currentlyRenderingFiber.updateQueue: any);
+  // 如果 updateQueue 为 null 那么就为当前 fiber 创建一个 updateQueue，因为现在在 hooks 中，所以使用 createFunctionComponentUpdateQueue 创建
   if (componentUpdateQueue === null) {
     componentUpdateQueue = createFunctionComponentUpdateQueue();
     currentlyRenderingFiber.updateQueue = (componentUpdateQueue: any);
+    // *循环链表
     componentUpdateQueue.lastEffect = effect.next = effect;
   } else {
+    // *否则的话，就将新创建的 effect 对象连接到循环链表中去，放在最后一个。  lastEffect 也指向新创建的 effect
     const lastEffect = componentUpdateQueue.lastEffect;
     if (lastEffect === null) {
       componentUpdateQueue.lastEffect = effect.next = effect;
@@ -1183,6 +1193,7 @@ function pushEffect(tag, create, destroy, deps) {
       componentUpdateQueue.lastEffect = effect;
     }
   }
+  // *返回这个 effect
   return effect;
 }
 
@@ -1204,6 +1215,8 @@ function updateRef<T>(initialValue: T): {| current: T |} {
 function mountEffectImpl(fiberFlags, hookFlags, create, deps): void {
   const hook = mountWorkInProgressHook();
   const nextDeps = deps === undefined ? null : deps;
+  // *flags 就是副作用，不同的 flags 就代表不同的副作用
+  // *将 fiberFlags 放到 fiber 中去
   currentlyRenderingFiber.flags |= fiberFlags;
   hook.memoizedState = pushEffect(
     HookHasEffect | hookFlags,
@@ -1223,7 +1236,9 @@ function updateEffectImpl(fiberFlags, hookFlags, create, deps): void {
     destroy = prevEffect.destroy;
     if (nextDeps !== null) {
       const prevDeps = prevEffect.deps;
+      // *判断 deps
       if (areHookInputsEqual(nextDeps, prevDeps)) {
+        // effect 对象依然需要放到 updateQueue 中去
         pushEffect(hookFlags, create, destroy, nextDeps);
         return;
       }
@@ -1251,9 +1266,10 @@ function mountEffect(
     }
   }
   return mountEffectImpl(
-    UpdateEffect | PassiveEffect,
-    HookPassive,
-    create,
+    // PassiveEffect 其实就是 Passive 标记使用了 useEffect 的函数组件
+    UpdateEffect | PassiveEffect,// *这个参数是 fiberFlags 用于标记 fiber 的副作用。
+    HookPassive,// *这个参数是 hookFlags 用于指明当前是哪个 hook 比如 layout 是 useLayoutEffect, passive 指的是 useEffect
+    create,// 传入的函数
     deps
   );
 }
