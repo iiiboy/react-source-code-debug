@@ -3111,8 +3111,8 @@ function beginWork(
     const newProps = workInProgress.pendingProps;
 
     if (
-      oldProps !== newProps ||
-      hasLegacyContextChanged() ||
+      oldProps !== newProps ||// props 不一样
+      hasLegacyContextChanged() ||// context 有改变 都是收到了更新
       // Force a re-render if the implementation changed due to hot reload:
       (__DEV__ ? workInProgress.type !== current.type : false)
     ) {
@@ -3120,6 +3120,7 @@ function beginWork(
       // This may be unset if the props are determined to be equal later (memo).
       didReceiveUpdate = true;
     } else if (!includesSomeLane(renderLanes, updateLanes)) {
+      // renderLanes 中不包括 updatesLanes 说明没有收到更新
       didReceiveUpdate = false;
       // This fiber does not have any pending work. Bailout without entering
       // the begin phase. There's still some bookkeeping we that needs to be done

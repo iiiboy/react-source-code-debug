@@ -1098,6 +1098,7 @@ function updateClassInstance(
 
   resetHasForceUpdateBeforeProcessing();
 
+  // *处理获取新的 state 如果有待处理的 Update 那么就会在这里处理。
   const oldState = workInProgress.memoizedState;
   let newState = (instance.state = oldState);
   processUpdateQueue(workInProgress, newProps, instance, renderLanes);
@@ -1177,6 +1178,8 @@ function updateClassInstance(
     // If an update was already in progress, we should schedule an Update
     // effect even though we're bailing out, so that cWU/cDU are called.
     if (typeof instance.componentDidUpdate === 'function') {
+      // *即使 shouldUpdate 为 false，但是 props 和 state 不一样依然会添加副作用
+      // ?添加副作用后，会执行 componentDidUpdate 吗？
       if (
         unresolvedOldProps !== current.memoizedProps ||
         oldState !== current.memoizedState

@@ -616,7 +616,7 @@ export function scheduleUpdateOnFiber(
       // Check if we're not already rendering
       (executionContext & (RenderContext | CommitContext)) === NoContext
     ) {
-      // 如果是本次更新是同步的，并且当前未在渲染流程中，那么
+      // 如果是本次更新是 unbatched 的，并且当前未在渲染流程中，那么
       // 调用performSyncWorkOnRoot开始执行同步任务
 
       // Register pending interactions on the root to avoid losing traced interaction data.

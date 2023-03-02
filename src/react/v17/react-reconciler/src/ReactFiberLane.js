@@ -804,6 +804,9 @@ export function includesSomeLane(a: Lanes | Lane, b: Lanes | Lane) {
   return (a & b) !== NoLanes;
 }
 
+/**
+ * @desc 校验 set 中有没有 subset
+ * */
 export function isSubsetOfLanes(set: Lanes, subset: Lanes | Lane) {
   /*
     * 校验set中有没有subset

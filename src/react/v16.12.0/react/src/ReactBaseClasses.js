@@ -24,6 +24,9 @@ function Component(props, context, updater) {
   this.refs = emptyObject;
   // We initialize the default updater but the real one gets injected by the
   // renderer.
+  // ReactNoopUpdateQueue 就是默认的 updater 里面的都是默认的函数，如果直接调用将会报错。
+  // *在 adoptClassInstance 方法中，将会对 updater 赋值: instance.updater = classComponentUpdater.
+  // classComponentUpdater 在 ReactFiberClassComponent.old.js 中
   this.updater = updater || ReactNoopUpdateQueue;
 }
 

@@ -202,8 +202,19 @@ export function createUpdate(eventTime: number, lane: Lane): Update<*> {
  */
 export function enqueueUpdate<State>(fiber: Fiber, update: Update<State>) {
   const updateQueue = fiber.updateQueue;
+  // 正常情况下 updateQueue 都是有值的，对于 class 组件, updateQueue 的数据格式为:
+  /**
+   * !updateQueue = {
+   *   baseState: State,// 当前 state 的值
+   *   *firstBaseUpdate: Update | null,// update 对象或 null, 主要作用是：shared.pending 只是用于存放当前的新的 Update 对象，但是如果上一次 updateClassComponent 中，没有能处理的 Update 对象怎么办呢？需要放到下一次 updateClassComponent 中进行处理；那么就会使用 firstBaseUpdate lastBaseUpdate 指向头节点和尾节点，下一次继续进行处理。
+   *   lastBaseUpdate: Update | null,
+   *   !shared: { pending: 循环链表 },// 是一个对象，对象里面又一个 pending 用于存放「待处理的 Update」是一个循环链表。 (PS: 目前只遇到 pending 这一种情况)
+   *   ?effects: null | ?,// 一次都没有见过，不知道有啥用
+   * }
+   * */
   if (updateQueue === null) {
     // Only occurs if the fiber has been unmounted.
+    // 翻译：只有当 fiber 卸载时才会发生
     return;
   }
 
@@ -404,6 +415,15 @@ export function processUpdateQueue<State>(
   instance: any,
   renderLanes: Lanes,
 ): void {
+  /**
+   * !updateQueue = {
+   *   baseState: State,// 当前 state 的值
+   *   firstBaseUpdate: Update | null,// update 对象或 null, 用于应对一些特殊情况
+   *   lastBaseUpdate: Update | null,
+   *   !shared: { pending: 循环链表 },// 是一个对象，对象里面又一个 pending 用于存放「待处理的 Update」是一个循环链表。 (PS: 目前只遇到 pending 这一种情况)
+   *   ?effects: null | ?,// 一次都没有见过，不知道有啥用
+   * }
+   * */
   // This is always non-null on a ClassComponent or HostRoot
   const queue: UpdateQueue<State> = (workInProgress.updateQueue: any);
 
@@ -427,6 +447,7 @@ export function processUpdateQueue<State>(
     const firstPendingUpdate = lastPendingUpdate.next;
     lastPendingUpdate.next = null;
     // Append pending updates to base queue
+    // *先为 firstBaseUpdate 和 lastBaseUpdate 赋值为 pending 这个循环链表的「头节点」和「尾节点」
     if (lastBaseUpdate === null) {
       firstBaseUpdate = firstPendingUpdate;
     } else {
@@ -471,10 +492,13 @@ export function processUpdateQueue<State>(
     do {
       const updateLane = update.lane;
       const updateEventTime = update.eventTime;
+      // *这一步在 Hooks 里面的 updateReducer 里面已经见过了
+      // *当当前 renderLanes 中不包含 Update.lane 时，当前不应该处理这个 Update，所以应该跳过它，后面再进行处理。
       if (!isSubsetOfLanes(renderLanes, updateLane)) {
         // Priority is insufficient. Skip this update. If this is the first
         // skipped update, the previous update/state is the new base
         // update/state.
+        // *这里 clone 了一个 Update
         const clone: Update<State> = {
           eventTime: updateEventTime,
           lane: updateLane,
@@ -485,6 +509,7 @@ export function processUpdateQueue<State>(
 
           next: null,
         };
+        // 并且在这里连接成循环链表
         if (newLastBaseUpdate === null) {
           newFirstBaseUpdate = newLastBaseUpdate = clone;
           newBaseState = newState;
@@ -495,7 +520,7 @@ export function processUpdateQueue<State>(
         newLanes = mergeLanes(newLanes, updateLane);
       } else {
         // This update does have sufficient priority.
-
+        // *newLastBaseUpdate 不为 null 说明之前已经有 Update 挂起了，那么后面所有的 Update 都应该刮起，因为需要按照顺序处理更新。所以后面的 Update 都进行处理。
         if (newLastBaseUpdate !== null) {
           const clone: Update<State> = {
             eventTime: updateEventTime,
