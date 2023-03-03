@@ -91,18 +91,18 @@ export const FunctionDiff5 = () => {
 };
 
 export const FunctionDiff6 = () => {
-  const [list, setList] = useState([1, 2, 3, 4, 5]);
+  const [list, setList] = useState(["p", "p", "p"]);
 
   useEffect(() => {
     setTimeout(() => {
-      setList([1, 4, 2, 5]);
+      setList(["p", "span", "p"]);
     }, 2000);
   }, []);
 
   return (
     <>
-      {list.map((item) => {
-        return <p key={item}>p{item}</p>;
+      {list.map((Item, index) => {
+        return <Item key={index}>{`${Item}${index}`}</Item>;
       })}
     </>
   );

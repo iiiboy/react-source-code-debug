@@ -446,7 +446,7 @@ function ChildReconciler(shouldTrackSideEffects) {
         }
       }
     }
-    // Insert
+    // Insert  当 elementType 不一样时将会进入这里
     const created = createFiberFromElement(element, returnFiber.mode, lanes);
     created.ref = coerceRef(returnFiber, current, element);
     created.return = returnFiber;
@@ -812,7 +812,7 @@ function ChildReconciler(shouldTrackSideEffects) {
     let previousNewFiber: Fiber | null = null;
     // 这里的 currentFirstChild 就是指挂载在 DOM 上哪一部分老的 Fiber.child
     let oldFiber = currentFirstChild;
-    let lastPlacedIndex = 0;
+    let lastPlacedIndex = 0;// 这个索引指向：最后一个 复用 fiber，且复用其位置不用重新 placement 的fiber；这样说可能比较难以理解；可以详细看看 placeChild 函数，和最下面的例子的解释
     let newIdx = 0;
     let nextOldFiber = null;
 

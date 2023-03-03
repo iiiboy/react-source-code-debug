@@ -51,7 +51,7 @@ function App() {
   // return <ContextDemo/>
 
   // diff 算法
-  return <FunctionDiff1 />;
+  return <FunctionDiff4 />;
 
   // return <Diff />;
 }
