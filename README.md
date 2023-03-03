@@ -1,4 +1,23 @@
 # React的秘密
+
+该仓库源于 https://github.com/neroneroffy/react-source-code-debug
+
+表示感谢
+
+以下是本人的学习所得
+
+[react-diff](docs/zhangchuachua/react-diff.md)
+
+[事件](docs/zhangchuachua/事件/事件.md)
+
+[调度与调和-未完成](docs/zhangchuachua/调度/调度与调和.md)
+
+[ClassComponent 生命周期](docs/zhangchuachua/beginWork/ClassComponent%20生命周期.md)
+
+[renderWithHooks](docs/zhangchuachua/beginWork/renderWithHooks.md)
+
+## 以下是原仓库的 README
+
 本仓库是我在阅读React源码过程中搭建的调试环境，学习过程中对源码添加了较为详细的注释，并记录了一些我自己的理解与思考，输出了十几篇文章。React的源码庞大且复杂，希望这个仓库可以帮助到学习源码的你，本仓库会中的源码会随官方发布的主要版本进行更新。
 
 *可clone本仓库到本地直接运行，快速获取源码调试环境，或者 [点击查看](https://github.com/neroneroffy/react-source-code-debug/tree/master/docs/setUpDebugEnv.md) 调试环境搭建教程*
