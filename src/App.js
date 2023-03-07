@@ -1,4 +1,13 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  useReducer,
+  useLayoutEffect,
+  useCallback,
+  Component,
+  PureComponent,
+} from "react";
 import State from "./components/State";
 import LanesDemo from "./components/LanesDemo";
 import AppSibling from "./components/AppSibling";
@@ -27,7 +36,26 @@ import "./App.css";
   }
 }*/
 
+class A extends PureComponent {
+  handleClick = () => {
+
+  }
+  render() {
+    return <div>this is A</div>;
+  }
+}
+
 function App() {
+  const [c, setC] = useState(1);
+  const handleClick = () => {
+    setC(c + 1);
+  };
+  return (
+    <div onClick={handleClick}>
+      <A />
+    </div>
+  );
+
   // 事件系统
   // return <EventDemo/>
 

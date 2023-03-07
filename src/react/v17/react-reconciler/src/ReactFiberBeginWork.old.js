@@ -771,6 +771,7 @@ function updateFunctionComponent(
     );
   }
 
+  // *如果 state 修改了，在 updateReducer 中也会更新 didReceiveUpdate 为 true
   if (current !== null && !didReceiveUpdate) {
     bailoutHooks(current, workInProgress, renderLanes);
     return bailoutOnAlreadyFinishedWork(current, workInProgress, renderLanes);

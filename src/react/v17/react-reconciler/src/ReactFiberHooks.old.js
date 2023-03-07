@@ -1710,7 +1710,7 @@ function dispatchAction<S, A>(
 
   const alternate = fiber.alternate;
   // currentlyRenderingFiber 会在 renderWithHooks 中进行赋值，指向正在 render 中的 fiber
-  // *而 renderWithHooks 在 beginWork 中执行，所以 currentlyRenderingFiber 在调和过程中才有值，所以说如果我们通过点击时间进入这个 dispatchAction 这里的 if 是不成立的
+  // *而 renderWithHooks 在 beginWork 中执行，所以 currentlyRenderingFiber 在调和过程中才有值，所以说如果我们通过点击事件进入这个 dispatchAction 这里的 if 是不成立的
   if (
     fiber === currentlyRenderingFiber ||
     (alternate !== null && alternate === currentlyRenderingFiber)
