@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8"/>
+  <title>Frame</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    #animation {
+      width: 30px;
+      height: 30px;
+      background: red;
+      animation: myfirst 3s infinite alternate;
+    }
+
+    @keyframes myfirst {
+      from {
+        width: 30px;
+        height: 30px;
+        border-radius: 0;
+        background: red;
+      }
+
+      to {
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        background: yellow;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div style="height: 500px;">
+  <div id="animation">test</div>
+</div>
+
+<button type="button" data-type="sync">同步执行</button>
+<button type="button" data-type="timeout">timeout 异步执行</button>
+<button type="button" data-type="interval">interval 异步执行</button>
+<button type="button" data-type="channel">channel 异步执行</button>
+<button type="button" data-type="channel-multitask">channel 多任务异步执行</button>
+<button type="button" data-type="channel-unknowntask">channel 多未知任务异步执行</button>
+
+<script>
+  // *平均用时 2ms
+  function work() {
+    const start = Date.now();
+
+    while (Date.now() - start < 2) {
+    }
+  }
+
+  function createWorks(length) {
+    return new Array(length).fill(0).map(() => {
+      return work;
+    })
+  }
+
+  const works = createWorks(3000);
+  const el = document.getElementById('animation');
+  let start;
+  const btns = document.querySelectorAll('button[type="button"]');
+
+  btns.forEach((btn) => {
+    const dataType = btn.dataset.type;
+    switch (dataType) {
+      case 'sync':
+        btn.addEventListener('click', flushWorkSync);
+        break;
+      case 'timeout':
+        btn.addEventListener('click', flushWorkSetTimeout)
+        break;
+      case 'interval':
+        btn.addEventListener('click', flushWorkSetInterval);
+        break;
+      case 'channel':
+        btn.addEventListener('click', flushWorkChannel);
+        break;
+      case 'channel-multitask':
+        btn.addEventListener('click', flushWorkChannelMultiTask);
+        break;
+      case 'channel-unknowntask':
+        btn.addEventListener('click', flushWorkChannelUnknownTask);
+    }
+  })
+
+  // *同步执行
+  function flushWorkSync() {
+    console.log('invoke')
+    const el = document.getElementById('animation');
+    start = Date.now();
+    for (const i of works) {
+      i();
+    }
+    el.innerText = `${Date.now() - start}ms`;
+  }
+
+  // *setTimeout
+  function flushWorkSetTimeout() {
+    start = Date.now();
+    setTimeout(workLoopTimeout, 0);
+  }
+
+  function workLoopTimeout() {
+    const work = works.shift();
+    if (work) {
+      work();
+      setTimeout(workLoop, 0)
+    } else {
+      el.innerText = `${Date.now() - start}ms`;
+    }
+  }
+
+  // *setInterval
+  function flushWorkSetInterval() {
+    start = Date.now();
+    const id = setInterval(() => {
+      const work = works.shift();
+      if (work) {
+        work();
+      } else {
+        el.innerText = `${Date.now() - start}ms`;
+        clearInterval(id);
+      }
+    }, 0);
+  }
+
+  // *使用 messageChannel
+  function flushWorkChannel() {
+    start = Date.now();
+    const channel = new MessageChannel();
+
+    channel.port1.onmessage = workLoopChannel;
+    // *必须传入一个参数，不然会报错
+    channel.port2.postMessage(null);
+
+    function workLoopChannel() {
+      const work = works.shift();
+      if (work) {
+        work();
+        channel.port2.postMessage(null);
+      } else {
+        el.innerText = `${Date.now() - start}ms`;
+      }
+    }
+  }
+
+
+  // *MessageChannel 多任务
+  function flushWorkChannelMultiTask() {
+    start = Date.now();
+    const channel = new MessageChannel();
+
+    channel.port1.onmessage = workLoopChannel;
+    // *必须传入一个参数，不然会报错
+    channel.port2.postMessage(null);
+
+    function workLoopChannel() {
+      for (let i = 0; i < 6; i++) {
+        const work = works.shift();
+        if (work) {
+          work();
+        } else {
+          break;
+        }
+      }
+      if (works.length) channel.port2.postMessage(null);
+      else el.innerText = `${Date.now() - start}ms`;
+    }
+  }
+
+  // *MessageChannel 未知耗时的任务
+  function flushWorkChannelUnknownTask() {
+    start = Date.now();
+    const channel = new MessageChannel();
+    channel.port1.onmessage = workLoop;
+    channel.port2.postMessage(null);
+
+    function workLoop() {
+      const loopStart = Date.now();
+      let work = works.shift();
+
+      while (work) {
+        work();
+        if (Date.now() - loopStart >= 5) {
+          break;
+        }
+        work = works.shift();
+      }
+
+      if (!works.length) {
+        el.innerText = `${Date.now() - start}ms`;
+      } else channel.port2.postMessage(null);
+    }
+  }
+
+</script>
+</body>
+
+</html>

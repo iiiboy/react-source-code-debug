@@ -10,7 +10,7 @@
 type Heap = Array<Node>;
 type Node = {|
   id: number,
-  sortIndex: number,
+    sortIndex: number,
 |};
 
 export function push(heap: Heap, node: Node): void {
@@ -19,6 +19,7 @@ export function push(heap: Heap, node: Node): void {
   siftUp(heap, node, index);
 }
 
+// *获取 堆 的第一个元素，如果元素不存在的话，就返回 null
 export function peek(heap: Heap): Node | null {
   const first = heap[0];
   return first === undefined ? null : first;

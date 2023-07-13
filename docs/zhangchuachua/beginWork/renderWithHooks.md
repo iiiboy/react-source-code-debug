@@ -158,15 +158,6 @@ function useState<S>(
 function resolveDispatcher() {
   // *答案就是在这里，会通过 ReactCurrentDispatcher.current 这个全局属性进行获取.
   const dispatcher = ReactCurrentDispatcher.current;
-  invariant(
-    dispatcher !== null,
-    'Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for' +
-    ' one of the following reasons:\n' +
-    '1. You might have mismatching versions of React and the renderer (such as React DOM)\n' +
-    '2. You might be breaking the Rules of Hooks\n' +
-    '3. You might have more than one copy of React in the same app\n' +
-    'See https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.',
-  );
   // *然后进行返回
   return dispatcher;
 }
@@ -299,12 +290,6 @@ function updateWorkInProgressHook(): Hook {
     // *prevNode = nextNode 移动到末尾
     currentHook = nextCurrentHook;
   } else {
-    // Clone from the current hook.
-
-    invariant(
-      nextCurrentHook !== null,
-      'Rendered more hooks than during the previous render.',
-    );
     // *prevNode = nextNode 移动到末尾
     currentHook = nextCurrentHook;
 

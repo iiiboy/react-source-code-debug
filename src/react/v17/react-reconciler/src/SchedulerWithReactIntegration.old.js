@@ -7,12 +7,12 @@
  * @flow
  */
 
-import type {ReactPriorityLevel} from './ReactInternalTypes';
+import type { ReactPriorityLevel } from './ReactInternalTypes';
 
 // Intentionally not named imports because Rollup would use dynamic dispatch for
 // CommonJS interop named imports.
 import * as Scheduler from '../../scheduler';
-import {__interactionsRef} from '../../scheduler/tracing';
+import { __interactionsRef } from '../../scheduler/tracing';
 import {
   enableSchedulerTracing,
   decoupleUpdatePriorityFromScheduler,
@@ -46,16 +46,16 @@ if (enableSchedulerTracing) {
   invariant(
     __interactionsRef != null && __interactionsRef.current != null,
     'It is not supported to run the profiling version of a renderer (for ' +
-      'example, `react-dom/profiling`) without also replacing the ' +
-      '`scheduler/tracing` module with `scheduler/tracing-profiling`. Your ' +
-      'bundler might have a setting for aliasing both modules. Learn more at ' +
-      'https://reactjs.org/link/profiling',
+    'example, `react-dom/profiling`) without also replacing the ' +
+    '`scheduler/tracing` module with `scheduler/tracing-profiling`. Your ' +
+    'bundler might have a setting for aliasing both modules. Learn more at ' +
+    'https://reactjs.org/link/profiling',
   );
 }
 
 export type SchedulerCallback = (isSync: boolean) => SchedulerCallback | null;
 
-type SchedulerCallbackOptions = {timeout?: number, ...};
+type SchedulerCallbackOptions = { timeout?: number, ... };
 
 const fakeCallbackNode = {};
 
@@ -73,7 +73,7 @@ export const NoPriority: ReactPriorityLevel = 90;
 export const shouldYield = Scheduler_shouldYield;
 export const requestPaint =
   // Fall back gracefully if we're running an older version of Scheduler.
-  Scheduler_requestPaint !== undefined ? Scheduler_requestPaint : () => {};
+  Scheduler_requestPaint !== undefined ? Scheduler_requestPaint : () => { };
 
 let syncQueue: Array<SchedulerCallback> | null = null;
 let immediateQueueCallbackNode: mixed | null = null;

@@ -7,6 +7,7 @@ import React, {
   useCallback,
   Component,
   PureComponent,
+  useRef,
 } from "react";
 import State from "./components/State";
 import LanesDemo from "./components/LanesDemo";
@@ -36,25 +37,33 @@ import "./App.css";
   }
 }*/
 
-class A extends PureComponent {
-  handleClick = () => {
-
-  }
-  render() {
-    return <div>this is A</div>;
-  }
-}
-
 function App() {
-  const [c, setC] = useState(1);
-  const handleClick = () => {
-    setC(c + 1);
-  };
-  return (
-    <div onClick={handleClick}>
-      <A />
-    </div>
-  );
+  const [count, setCount] = useState(0);
+
+  const handleClick = useCallback(() => {
+    setCount(count + 1);
+    setCount(count + 2);
+    console.log(count);
+    setCount((prev) => prev + 3);
+  }, [count]);
+
+//  useEffect(() => {
+//    setTimeout(() => {
+//      setCount(count + 1);
+//      setCount(count + 2);
+//      console.log(count);
+//    }, 100);
+//  }, [count]);
+
+  useEffect(() => {
+    console.log("effect 1");
+  }, [count]);
+
+  useEffect(() => {
+    console.log("effect2");
+  }, [count]);
+
+  return <button onClick={handleClick}>{count}</button>;
 
   // 事件系统
   // return <EventDemo/>
@@ -63,7 +72,7 @@ function App() {
   // fiber树
   // return (
   //   <div className="App">
-  //     <CC />
+  //     <CC />s
   //     <span className={'app-span'} onClick={() => setCount(count + 1)}>App{count}</span>
   //     <AppSibling count={count}/>
   //   </div>
@@ -79,7 +88,7 @@ function App() {
   // return <ContextDemo/>
 
   // diff 算法
-  return <FunctionDiff4 />;
+  // return <FunctionDiff4 />;
 
   // return <Diff />;
 }

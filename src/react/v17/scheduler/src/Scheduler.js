@@ -21,7 +21,7 @@ import {
   forceFrameRate,
   requestPaint,
 } from './SchedulerHostConfig';
-import {push, pop, peek} from './SchedulerMinHeap';
+import { push, pop, peek } from './SchedulerMinHeap';
 
 // TODO: Use symbols?
 import {
@@ -296,7 +296,7 @@ function unstable_next(eventHandler) {
 
 function unstable_wrapCallback(callback) {
   var parentPriorityLevel = currentPriorityLevel;
-  return function() {
+  return function () {
     // This is a fork of runWithPriority, inlined for performance.
     var previousPriorityLevel = currentPriorityLevel;
     currentPriorityLevel = parentPriorityLevel;
@@ -363,12 +363,12 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
   if (enableProfiling) {
     newTask.isQueued = false;
   }
-  // 如果是延迟任务则将 newTask 放入延迟调度队列（timerQueue）并执行 requestHostTimeout
-  // 如果是正常任务则将 newTask 放入正常调度队列（taskQueue）并执行 requestHostCallback
+  // !如果是延迟任务则将 newTask 放入延迟调度队列（timerQueue）并执行 requestHostTimeout  timerQueue 是最小堆
+  // !如果是正常任务则将 newTask 放入正常调度队列（taskQueue）并执行 requestHostCallback taskQueue 是最小堆
 
   if (startTime > currentTime) {// 开始时间 > 当前时间，说明该任务是一个延迟任务
     // This is a delayed task.
-    newTask.sortIndex = startTime;
+    newTask.sortIndex = startTime;// 对于延迟任务来说，sortIndex 是当前任务的开始时间
     push(timerQueue, newTask);
     if (peek(taskQueue) === null && newTask === peek(timerQueue)) {
       // All tasks are delayed, and this is the task with the earliest delay.
@@ -468,10 +468,10 @@ export {
 
 export const unstable_Profiling = enableProfiling
   ? {
-      startLoggingProfilingEvents,
-      stopLoggingProfilingEvents,
-      sharedProfilingBuffer,
-    }
+    startLoggingProfilingEvents,
+    stopLoggingProfilingEvents,
+    sharedProfilingBuffer,
+  }
   : null;
 export {
   unstable_flushAllWithoutAsserting,
