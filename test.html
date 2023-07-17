@@ -196,6 +196,73 @@
     }
   }
 
+  const yieldInterval = 5;
+  let deadLine = 0;
+  const channel = new MessageChannel();
+  let port = channel.port2;
+  channel.port1.onmessage = performWorkUntilDeadLine;
+  let scheduledHostCallback = null;
+
+  let taskQueue = [];
+  let isHostCallbackScheduled = false;
+
+  function performWorkUntilDeadLine() {
+    if (scheduledHostCallback) {
+      const currentTime = Date.now();
+      deadLine = currentTime + yieldInterval;
+      const hasMoreWork = scheduledHostCallback(currentTime);
+      if (!hasMoreWork) {
+        scheduledHostCallback = null
+      } else {
+        port.postMessage(null);
+      }
+    }
+  }
+
+  function requestHostCallback(callback) {
+    scheduledHostCallback = callback;
+    port.postMessage(null);
+
+  }
+
+  function scheduleCallback(callback) {
+    let newTask = {
+      callback: callback
+    }
+    taskQueue.push(newTask);
+    if (!isHostCallbackScheduled) {
+      isHostCallbackScheduled = true;
+      requestHostCallback(flushWork);
+    }
+    return newTask;
+  }
+
+  let currentTask = null;
+
+  function flushWork(initialTime) {
+    return workLoop(initialTime)
+  }
+
+  function workLoop(initialTime) {
+    currentTask = taskQueue[0];
+    while (currentTask) {
+      if (Date.now() >= deadLine) {
+        break
+      }
+      var callback = currentTask.callback;
+      callback();
+
+      taskQueue.shift();
+      currentTask = taskQueue[0];
+    }
+    if (currentTask) {
+      return true;
+    } else {
+      isHostCallbackScheduled = false;
+      return false;
+    }
+  }
+
 </script>
 </body>
 

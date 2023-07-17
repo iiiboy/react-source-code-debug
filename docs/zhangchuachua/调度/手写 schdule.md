@@ -2,7 +2,7 @@
 
 ### 参考
 
-- [mini-react](https://github.com/lizuncong/mini-react)
+- [mini-react 讲得非常好，我这里几乎等于照搬了，并不是自己在探索，而是跟着大佬在学习](https://github.com/lizuncong/mini-react)
 
 ### 从一个故事开始
 
@@ -38,7 +38,7 @@
 </body>
 ```
 
-### 新的需求
+#### 新的需求
 
 此时有了一个新的需求，在动画的基础上，需要执行一系列的任务，然后在任务结束后将处理任务所耗费的时间更新在页面上
 
@@ -250,3 +250,109 @@ performance 图中可以看到每次 workLoop 的执行耗时都在 5ms 左右�
 
 ### 开始封装
 
+```js
+// *scheduleCallback 会创建一个 task，并且放到 **taskQueue** 中，如果开始「调度」，但是为了防止同时触发多次事件，所以还需要一个全局变量(**scheduledHostCallback**)，存储当前是否已有已调度的任务
+const taskQueue = [];
+let scheduledHostCallback = false;
+
+// *需要暴露出来一个方法，让用户可以使用该方法来调度任务，这个方法就是 `scheudleCallback`
+
+// *scheduleCallback 接收一个 callback (react 中的 schedule 有三个参数：优先级, callback, 选项)
+function schduleCallback(callback) {
+  const newTask = {
+    callback: callback,
+  }
+  taskQueue.push(newTask);
+  
+  if(!scheduledHostCallback) {
+    scheduledHostCallback = true;
+    // *「调度」的应该是内部的函数，而不是传入的 callback ，因为使用内部函数才能更好的掌控调度的细节；
+    requestHostCallback(flushWork)
+  }
+  
+  return newTask;
+}
+
+// *flushWork 在正式执行任务之前触发，所以可以包含一些在 workLoop 之前需要的操作；这个例子比较简单就没有；
+function flushWork(initialTime) {
+  return workLoop(initialTime);
+}
+
+// *将在这个函数内正式执行任务, 将在允许的时间里尽可能多的执行任务；
+function workLoop(initialTime) {
+  let currentTask = taskQueue[0];
+  
+  while(currentTask) {
+    if(Date.now() > deadLine) {
+      break;
+    }
+    
+    let callback = currentTask.callback;
+    callback();
+    
+    taskQueue.shift();
+    currentTask = taskQueue[0];
+  }
+  
+  if(currentTask) {
+    return true;
+  } {
+    isHostCallbackScheduled = false;
+    return false;
+  }
+}
+```
+
+调度系统使用 channel
+
+requestCallback 专门用于触发宏任务事件
+
+performWorkUntilDeadline 监听 channel 事件；开始执行回调，并且计算 deadline；
+
+deadline 就是任务的结束时间，应该是「任务的开始时间」+ yieldInterval 也就是 5ms
+
+
+```js
+const yieldInterval = 5;
+let deadline;
+let scheduledHostCallback = null;
+const channel = new MessageChannel();
+const port = channel.port2;
+channel.port1.onmessage = performWorkUntilDeadLine;
+
+function performWorkUntilDealine() {
+  if(scheduledHostCallback) {
+    const current = Date.now();
+    deadline = current + yieldInterval;
+    const hasMoreTask = scheduledHostCallback(current);
+    
+    if(hasMoreTask) {// *如果还有任务，就放到下一个宏任务中进行
+      port.postMessage(null);
+    } else {
+      scheduledHostCallback = null;
+    }
+  }
+}
+
+// *专门用于请求回调，即触发 postMessage 事件；
+function requestHostCallback(callback) {
+  scheduledHostCallback = callback;
+  // 这里的 null 必须传 不然会报错；
+  port.postMessage(null);
+}
+```
+
+这个简易的 schedule 系统的大致流程是：
+
+```mermaid
+flowchart TB
+    scheduleCallback["scheduleCallback 是暴露出来的接口，负责接收 callback\n 将会使用 callback 创建一个 task 并且放到 taskQueue 里面"]
+    --> |"requestHostCallback(flushWork)"|requestHostCallback["requestCallback 负责触发宏任务事件\n也就是触发 postMessage 函数"]
+    --> performWorkUtilDeadline["performWorkUtilDeadline 函数就是宏任务对应的处理函数\n将会在这个函中获取任务开始的事件，计算 deadline \n 然后开始执行回调，并且获取回调(flushWork)的返回值（是否还有任务）\n 如果还有任务将会触发 postMessage 函数，下一次宏任务继续，有点类似与递归"]
+    --> flushWork["flushWork 作正式执行任务前的函数，可以进行一些执行任务前的操作"]
+    --> workLoop["workLoop 将正式开始执行任务；将会在运行的时间里，尽可能多的执行任务；\n 将会使用 while 循环从 taskQueue 里面拿出任务，并且执行；\n 如果到达了 deadline 将会直接 break，如果还有任务就返回 true"]
+```
+
+> 注意：其中 performWorkUtilDeadline 和后面的 flushWork, workLoop 都是宏任务中的操作，都是异步的；
+> 
+> 注意：schedule 只能将若干个任务切片完成，并不能将一个任务进行切片；所以如果有那种一个任务执行太久的情况，也是没有办法的；
