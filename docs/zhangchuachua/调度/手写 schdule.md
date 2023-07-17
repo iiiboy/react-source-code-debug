@@ -355,4 +355,10 @@ flowchart TB
 
 > 注意：其中 performWorkUtilDeadline 和后面的 flushWork, workLoop 都是宏任务中的操作，都是异步的；
 > 
-> 注意：schedule 只能将若干个任务切片完成，并不能将一个任务进行切片；所以如果有那种一个任务执行太久的情况，也是没有办法的；
+> ---
+> 
+> 注意：这里的schedule 只能将若干个任务切片完成，并不能将一个任务进行切片；所以如果有那种一个任务执行太久的情况，也是没有办法的；
+>
+> 所以说，在 schedule 真实的实现中， callback 可以返回一个函数说明当前的 callback 并没有执行完成；
+> 
+> 但是需要使用 schedule 的 shouldYield 来判断是否要中断了
