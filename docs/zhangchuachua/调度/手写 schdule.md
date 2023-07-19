@@ -362,3 +362,108 @@ flowchart TB
 > 所以说，在 schedule 真实的实现中， callback 可以返回一个函数说明当前的 callback 并没有执行完成；
 > 
 > 但是需要使用 schedule 的 shouldYield 来判断是否要中断了
+
+### 添加优先级
+
+这里我就直接使用 React Schedule 中的优先级的；
+
+Schedule 分为五个优先级，分别对应不同的超时时间
+
+1. ImmediatePriority -- -1
+2. UserBlockingPriority -- 250
+3. NormalPriority -- 5000
+4. LowerPriority -- 1000
+5. IdlePriority -- 用不超时
+
+在 scheduleCallback 中可以传入优先级，然后在函数内部根据优先级创建不同的任务：
+
+```js
+// *schedule 使用的是最小堆，我这里就直接使用 sort 了
+function push(queue, task) {
+  queue.push(task);
+  queue.sort((a, b) => {
+    return a.sortIndex - b.sortIndex;
+  })
+}
+
+function scheduleCallback(priorityLevel, callback) {
+  let timeout;
+  switch (priorityLevel) {
+    case ImmediatePriority:
+      timeout = IMMEDIATE_PRIORITY_TIMEOUT;
+      break;
+    case UserBlockingPriority:
+      timeout = USER_BLOCKING_PRIORITY_TIMEOUT;
+      break;
+    case LowerPriority:
+      timeout = LOWER_PRIORITY_TIMEOUT;
+      break;
+    case IdlePriority:
+      timeout = IDLE_PRIORITY_TIMEOUT;
+      break;
+    case NormalPriority:
+    default:
+      timeout = NORMAL_PRIORITY_TIMEOUT;
+      break;
+  }
+  const startTime = Date.now();
+  const expiredTime = startTime + timeout;
+  let newTask = {
+    id: taskIdCounter++,
+    startTime,
+    callback: callback,
+    priorityLevel,
+    expiredTime,
+    sortIndex: expiredTime
+  }
+
+  // *使用 push 方法可以每次添加新任务时都进行排序，高优先级任务插队就是这样的插的；
+  push(taskQueue, newTask);
+
+  if (!isHostCallbackScheduled) {
+    isHostCallbackScheduled = true;
+    requestHostCallback(flushWork);
+  }
+  return newTask;
+}
+```
+
+因为我们引入了优先级这个概念，所以在执行回调的时候，如果在回调中，调度了一个高优先级的任务，那么这个任务将会被 push 到堆顶，需要针对这种情况进行处理；
+
+```js
+  // *添加了优先级后，workLoop 应该判断当前任务是否过期，如果过期了，即使应该 yield 也要继续将该任务执行完成；
+  function workLoop(initialTime) {
+    const currentTime = initialTime;
+    currentTask = taskQueue[0];
+    while (currentTask) {
+      const isExpired = currentTime > currentTask.expiredTime;
+      if (!isExpired && shouldYield()) {
+        break;
+      }
+      const callback = currentTask.callback;
+      // !注意：此次引入了优先级的概念，如果在 callback 中调度了高优先级的任务，那么就会插入到堆顶，需要对这种情况进行处理；
+      if (typeof callback === 'function') {// *因为会有对 callback 置为 null 的操作，所以需要判断 callback 的类型
+        // *因为堆顶有可能是后插入的高优先级任务，所以这里将 callback 置为 null 用来与高优先级任务进行区分；
+        // *为什么是置为 null 而不是直接 shift 任务再进行执行呢？因为在执行任务之前，需要进行 shouldYield 判断；如果不执行了，怎么办呢
+        currentTask.callback = null;
+        // 回调的返回值可用于任务切片；后续会进行添加；
+        const continuationCallback = callback(isExpired);
+        // *这里也需要进行判断；因为堆顶可能并不是 currentTask 了
+        if (currentTask === taskQueue[0]) {
+          taskQueue.shift();
+        }
+
+      } else {
+        taskQueue.shift();
+      }
+
+      currentTask = taskQueue[0];
+    }
+    if (currentTask) {
+      return true;
+    } else {
+      isHostCallbackScheduled = false;
+      return false;
+    }
+  }
+```
