@@ -57,7 +57,7 @@ function pop<T>(cursor: StackCursor<T>, fiber: Fiber): void {
 }
 
 function push<T>(cursor: StackCursor<T>, value: T, fiber: Fiber): void {
-  console.log('value', value);
+  // console.log('value', value);
   index++;
   /*
   * [ { theme: 'red' }, false ]

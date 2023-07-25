@@ -208,7 +208,17 @@
         const timer = timerQueue[0];
         if (timer) {
           // *如果没有任务了，那么应该继续请求定时器；
-          // ?为什么这里没有将 isHostTimeoutScheduled 置为 true 啊？ 应该是我对这个变量的理解有问题
+          // ?为什么这里没有将 isHostTimeoutScheduled 置为 true 啊？
+          // !注意这里并没有将 isHostTimeoutScheduled 设置为 true；并不是 bug 而是开发团队有意为之，因为此时根本不需要设置为 true 了
+          // !isHostTimeoutScheduled 的目的是为了防止请求多个 setTimeout；目前请求 setTimeout 的地方有三个 scheduleCallback, handleTimeout, workLoop 中；
+          // !其中 handleTimeout 和 workLoop 都没有将 isHostTimeoutScheduled 设置为 true
+          // !handleTimeout 就是 setTimeout 的回调函数；也就是说如果只请求了一个 setTimeout 那么就只会有一个 handleTimeout，如果只有一个 handleTimeout 那么 handleTimeout 内部也就只会请求一个 setTimeout；所以要从另外两个函数下手；
+          // !在 workLoop 中当 taskQueue 为空，并且 timerQueue 不会空时将会请求一个 setTimeout；在 scheduleCallback 中如果 taskQueue 为空，并且 timerQueue 的堆顶等于 newTask 的话，会请求一个 setTimeout；
+          // !假设 workLoop 中请求了一个 setTimeout，这个很好实现，在一个任务的回调中再调度一个延迟任务即可；此时我们只需要在 scheduleCallback 中再次请求一个 setTimeout 就可以证明这里的错误；
+          // !我们分为两种情况使用 scheduleCallback
+          // !1. 直接使用 scheduleCallback 此时在 scheduleCallback 中会将 isHostTimeoutScheduled 赋值为 true 防止请求多个 setTimeout
+          // !2. 在 scheduleCallback 的回调中再进行调度；在回调中进行调度就相当于在 workLoop 中调用 scheduleCallback，而 workLoop 是执行完回调之后，再 taskQueue.pop() 的，所以此时的 taskQueue 是有值，在 scheduleCallback 中无法请求 setTimeout
+          // !所以在 handleTimeout 和 workLoop 中无需将 isHostTimeoutScheduled 设置为 true；但是如果不会影响实际效果的话，我还是喜欢设置为 true 更容易理解一些
           requestHostTimeout(handleTimeout, timer.startTime - currentTime);
         }
       }
@@ -236,12 +246,17 @@
   let currentTask = null;
 
   function flushWork(initialTime) {
+    // 在 workLoop 中将会检查 timerQueue 里的任务，所以这里要清除 setTimeout
+    if (isHostTimeoutScheduled) {
+      cancelHostTimeout();
+    }
     return workLoop(initialTime)
   }
 
   // *添加了优先级后，workLoop 应该判断当前任务是否过期，如果过期了，即使应该 yield 也要继续将该任务执行完成；
   function workLoop(initialTime) {
-    const currentTime = initialTime;
+    let currentTime = initialTime;
+    advanceTimers(currentTime);
     currentTask = taskQueue[0];
     while (currentTask) {
       const isExpired = currentTime > currentTask.expiredTime;
@@ -253,10 +268,12 @@
       if (typeof callback === 'function') {
         currentTask.callback = null;
         const continuationCallback = callback(isExpired);
+        // *callback 执行完成后，应该更新 currentTime 判断后续 task 是否过期将会不准确
+        currentTime = Date.now();
         if (currentTask === taskQueue[0]) {
           taskQueue.shift();
         }
-
+        advanceTimers(currentTime);
       } else {
         taskQueue.shift();
       }
@@ -267,6 +284,10 @@
       return true;
     } else {
       isHostCallbackScheduled = false;
+      const firstTimer = timerQueue[0];
+      if (firstTimer) {
+        requestHostTimeout(handleTimeout, firstTimer.startTime - currentTime);
+      }
       return false;
     }
   }
