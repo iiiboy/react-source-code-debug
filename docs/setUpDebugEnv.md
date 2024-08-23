@@ -1,6 +1,7 @@
 # 搭建源码调试环境
-使用create-react-app搭建项目，下载源码。在src目录下创建源码存放目录： ‘/react’，将React源码拷贝到该目录下。
+使用create-react-app搭建项目，之后执行 npm run eject，将webpack配置文件暴露出来，下载react源码。在src目录下创建源码存放目录： ‘/react’，将React源码（packages文件夹下的所有子文件夹）拷贝到该目录下。
 ## 修改alias
+在config/webpack.config.js中找到alias，进行修改
 ```
 resolve: {
     alias: {
@@ -18,7 +19,7 @@ resolve: {
 },
 ```
 ## 修改环境变量
-为/config/env.js中的stringifed对象增加属性:
+为config/env.js中的stringifed对象增加属性:
 ```
   const stringified = {
     'process.env': Object.keys(raw).reduce((env, key) => {
@@ -89,7 +90,7 @@ export default ReactSharedInternals;
 export * from './forks/ReactFiberHostConfig.dom';
 ```
 
-## 关于函数invariant
+## 关于函数invariant （18版本后已不用修改）
 修改 /shared/invariant.js，直接return。不让报错
 ```
 export default function invariant(condition, format, a, b, c, d, e, f) {
@@ -100,7 +101,7 @@ export default function invariant(condition, format, a, b, c, d, e, f) {
   );
 }
 ```
-## 关于scheduler
+## 关于scheduler （18版本后已不用修改）
 修改 /scheduler/src/Scheduler.js，在最底部加上
 ```
 export {
@@ -125,7 +126,7 @@ export {
 } from "./forks/SchedulerHostConfig.default.js";
 ```
 
-修改src/react/v16.13.1/scheduler/src/SchedulerHostConfig.js，注释掉报错，加上新增内容:
+修改src/react/v16.13.1/scheduler/src/SchedulerHostConfig.js，注释掉报错，加上新增内容: *（18版本后已不用修改）*
 ```
 export {
   unstable_flushAllWithoutAsserting,
@@ -155,13 +156,33 @@ export {
 ## 将React 和 ReactDOM默认导出
 * /react/index.js
 ```
-import * as React from './src/React'
+import * as React from './src/React' // （该行18版本后已不用修改）
 export default React
 ```
 * /react-dom/index.js
 ```
-import * as ReactDOM from './src/client/ReactDOM'
+import * as ReactDOM from './src/client/ReactDOM' // （该行18版本后已不用修改）
 export default ReactDOM
+```
+
+## 声明空函数
+在 scheduler/src/forks/Scheduler.js 增加如下空函数声明：
+```javascript
+const unstable_yieldValue = () => {}
+const unstable_setDisableYieldValue = () => {}
+
+```
+然后将它们增加到最下方的export中，暴露出去
+
+```javascript
+export {
+
+  ...
+
+  unstable_yieldValue,
+  unstable_setDisableYieldValue
+};
+
 ```
 
 至此搭建完成，即可对源码进行调试。
