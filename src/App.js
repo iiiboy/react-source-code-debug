@@ -27,6 +27,38 @@ import "./App.css";
   }
 }*/
 
+// function App() {
+//
+//   // 事件系统
+//   // return <EventDemo/>
+//
+//   // return <Hooks/>
+//   // fiber树
+//   // return (
+//   //   <div className="App">
+//   //     <CC />s
+//   //     <span className={'app-span'} onClick={() => setCount(count + 1)}>App{count}</span>
+//   //     <AppSibling count={count}/>
+//   //   </div>
+//   // );
+//
+//   // Scheduler调度任务与用户交互
+//   // return <SchedulerTask/>
+//
+//   // 高优先级插队
+//   // return <TasksWithDifferentPriorities/>
+//
+//   // context
+//   // return <ContextDemo/>
+//
+//   // diff 算法
+//   // return <FunctionDiff1 />;
+//
+//   // return <Diff />;
+// }
+
+const arr = [1,2,3]
+
 function App() {
   // 事件系统
   // return <EventDemo/>

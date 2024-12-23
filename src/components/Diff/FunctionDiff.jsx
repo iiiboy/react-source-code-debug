@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 
+// 添加到尾部
 export const FunctionDiff1 = () => {
   const [list, setList] = useState([1]);
 
@@ -18,6 +19,7 @@ export const FunctionDiff1 = () => {
   );
 };
 
+// 删除尾部
 export const FunctionDiff2 = () => {
   const [list, setList] = useState([1, 2]);
 
@@ -36,6 +38,7 @@ export const FunctionDiff2 = () => {
   );
 };
 
+// 修改 key
 export const FunctionDiff3 = () => {
   const [list, setList] = useState([1, 2]);
 
@@ -54,6 +57,7 @@ export const FunctionDiff3 = () => {
   );
 };
 
+// *中间添加元素
 export const FunctionDiff4 = () => {
   const [list, setList] = useState([1, 2]);
 
@@ -72,6 +76,7 @@ export const FunctionDiff4 = () => {
   );
 };
 
+//
 export const FunctionDiff5 = () => {
   const [list, setList] = useState([1, 2, 3]);
 
@@ -90,6 +95,7 @@ export const FunctionDiff5 = () => {
   );
 };
 
+// *元素类型改变
 export const FunctionDiff6 = () => {
   const [list, setList] = useState(["p", "p", "p"]);
 
