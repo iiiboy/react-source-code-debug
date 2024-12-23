@@ -21,7 +21,7 @@ import {
   forceFrameRate,
   requestPaint,
 } from './SchedulerHostConfig';
-import {push, pop, peek} from './SchedulerMinHeap';
+import { push, pop, peek } from './SchedulerMinHeap';
 
 // TODO: Use symbols?
 import {
@@ -73,10 +73,10 @@ var currentTask = null;
 var currentPriorityLevel = NormalPriority;
 
 // This is set while performing work, to prevent re-entrancy.
-var isPerformingWork = false;
+var isPerformingWork = false;// *为 true 的话，表示正在执行任务，可以大致理解为在 flushWork 到 workLoop 中
 
-var isHostCallbackScheduled = false;
-var isHostTimeoutScheduled = false;
+var isHostCallbackScheduled = false;// *为 ture 的话，表示已经有任务被调度了，可以大致理解为已经有任务被放到 taskQueue 里面了，但是还没有到 flushWork 的阶段；
+var isHostTimeoutScheduled = false;// *为 true 的话，表示已经有一个 setTimeout 被调度了，因为 schedule 只能使用一个 setTimeout 用来计时，处理 timerQueue 中的任务，所以需要一个全局变量进行监控；
 
 /**
  * @desc 将 timerQueue 中过期的 timer 提出来，然后放到 taskQueue
@@ -119,11 +119,22 @@ function handleTimeout(currentTime) {
 
   if (!isHostCallbackScheduled) {
     if (peek(taskQueue) !== null) {
+      // *如果 taskQueue 中还有任务时，不需要重新注册一个 setTimeout 处理 timerQueue；因为每一次在 workLoop 执行 taskQueue 中的任务之前，都回去检查 timerQueue 中的是否有已经“到时”的任务
       isHostCallbackScheduled = true;
       requestHostCallback(flushWork);
     } else {
       const firstTimer = peek(timerQueue);
       if (firstTimer !== null) {
+        // !注意这里并没有将 isHostTimeoutScheduled 设置为 true；并不是 bug 而是开发团队有意为之，因为此时根本不需要设置为 true 了
+        // !isHostTimeoutScheduled 的目的是为了防止请求多个 setTimeout；目前请求 setTimeout 的地方有三个 scheduleCallback, handleTimeout, workLoop 中；
+        // !其中 handleTimeout 和 workLoop 都没有将 isHostTimeoutScheduled 设置为 true
+        // !handleTimeout 就是 setTimeout 的回调函数；也就是说如果只请求了一个 setTimeout 那么就只会有一个 handleTimeout，如果只有一个 handleTimeout 那么 handleTimeout 内部也就只会请求一个 setTimeout；所以要从另外两个函数下手；
+        // !在 workLoop 中当 taskQueue 为空，并且 timerQueue 不会空时将会请求一个 setTimeout；在 scheduleCallback 中如果 taskQueue 为空，并且 timerQueue 的堆顶等于 newTask 的话，会请求一个 setTimeout；
+        // !假设 workLoop 中请求了一个 setTimeout，这个很好实现，在一个任务的回调中再调度一个延迟任务即可；此时我们只需要在 scheduleCallback 中再次请求一个 setTimeout 就可以证明这里的错误；
+        // !我们分为两种情况使用 scheduleCallback
+        // !1. 直接使用 scheduleCallback 此时在 scheduleCallback 中会将 isHostTimeoutScheduled 赋值为 true 防止请求多个 setTimeout
+        // !2. 在 scheduleCallback 的回调中再进行调度；在回调中进行调度就相当于在 workLoop 中调用 scheduleCallback，而 workLoop 是执行完回调之后，再 taskQueue.pop() 的，所以此时的 taskQueue 是有值，在 scheduleCallback 中无法请求 setTimeout
+        // !所以在 handleTimeout 和 workLoop 中无需将 isHostTimeoutScheduled 设置为 true；但是如果不会影响实际效果的话，我还是喜欢设置为 true 更容易理解一些
         requestHostTimeout(handleTimeout, firstTimer.startTime - currentTime);
       }
     }
@@ -143,10 +154,8 @@ function flushWork(hasTimeRemaining, initialTime) {
   }
 
   // We'll need a host callback the next time work is scheduled.
-  // *当前正在执行调度的任务，所以标记为没有调度的回调
   isHostCallbackScheduled = false;
   if (isHostTimeoutScheduled) {
-    // ?取消掉延迟的调度任务，为什么要取消？如果调度了一个正常队列，又调度了一个延迟队列，那么执行正常队列的时候会取消掉延迟队列？为什么？会同时完成延迟队列中的任务吗？
     // We scheduled a timeout but it's no longer needed. Cancel it.
     isHostTimeoutScheduled = false;
     cancelHostTimeout();
@@ -296,7 +305,7 @@ function unstable_next(eventHandler) {
 
 function unstable_wrapCallback(callback) {
   var parentPriorityLevel = currentPriorityLevel;
-  return function() {
+  return function () {
     // This is a fork of runWithPriority, inlined for performance.
     var previousPriorityLevel = currentPriorityLevel;
     currentPriorityLevel = parentPriorityLevel;
@@ -363,12 +372,12 @@ function unstable_scheduleCallback(priorityLevel, callback, options) {
   if (enableProfiling) {
     newTask.isQueued = false;
   }
-  // 如果是延迟任务则将 newTask 放入延迟调度队列（timerQueue）并执行 requestHostTimeout
-  // 如果是正常任务则将 newTask 放入正常调度队列（taskQueue）并执行 requestHostCallback
+  // !如果是延迟任务则将 newTask 放入延迟调度队列（timerQueue）并执行 requestHostTimeout  timerQueue 是最小堆
+  // !如果是正常任务则将 newTask 放入正常调度队列（taskQueue）并执行 requestHostCallback taskQueue 是最小堆
 
   if (startTime > currentTime) {// 开始时间 > 当前时间，说明该任务是一个延迟任务
     // This is a delayed task.
-    newTask.sortIndex = startTime;
+    newTask.sortIndex = startTime;// 对于延迟任务来说，sortIndex 是当前任务的开始时间
     push(timerQueue, newTask);
     if (peek(taskQueue) === null && newTask === peek(timerQueue)) {
       // All tasks are delayed, and this is the task with the earliest delay.
@@ -468,10 +477,10 @@ export {
 
 export const unstable_Profiling = enableProfiling
   ? {
-      startLoggingProfilingEvents,
-      stopLoggingProfilingEvents,
-      sharedProfilingBuffer,
-    }
+    startLoggingProfilingEvents,
+    stopLoggingProfilingEvents,
+    sharedProfilingBuffer,
+  }
   : null;
 export {
   unstable_flushAllWithoutAsserting,
