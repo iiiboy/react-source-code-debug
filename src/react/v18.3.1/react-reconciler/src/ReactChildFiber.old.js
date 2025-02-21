@@ -1365,7 +1365,7 @@ export function cloneChildFibers(
     throw new Error('Resuming work not yet implemented.');
   }
 
-  if (workInProgress.child === null) {
+  if (workInProgress.child === null) {// 没有 child 不需要创建 fiber 了
     return;
   }
 

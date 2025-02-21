@@ -3467,6 +3467,7 @@ function remountFiber(
   }
 }
 
+// 检查当前 fiber 是否有更新，或者依赖的 context 是否发生了变化
 function checkScheduledUpdateOrContext(
   current: Fiber,
   renderLanes: Lanes,
@@ -3724,6 +3725,7 @@ function beginWork(
     const newProps = workInProgress.pendingProps;
 
     if (
+      // props 是否有更新
       oldProps !== newProps ||
       hasLegacyContextChanged() ||
       // Force a re-render if the implementation changed due to hot reload:
@@ -3740,12 +3742,14 @@ function beginWork(
         renderLanes,
       );
       if (
+        // 没有更新或者依赖的 context 没有发生变化
         !hasScheduledUpdateOrContext &&
         // If this is the second pass of an error or suspense boundary, there
         // may not be work scheduled on `current`, so we check for this flag.
         (workInProgress.flags & DidCapture) === NoFlags
       ) {
         // No pending updates or context. Bail out now.
+        // current fiber 不需要调和和 re-render
         didReceiveUpdate = false;
         return attemptEarlyBailoutIfNoScheduledUpdate(
           current,

@@ -67,35 +67,35 @@ import "./App.css";
 //   // return <Diff />;
 // }
 
-const arr = [1,2,3]
+function Count() {
+  const [count, setCount] = useState(0);
+  const handleConcurrentClick = useCallback(() => {
+    setCount(1);
+    setCount(1);
+    setCount((prev) => prev + 1);
+    // setTimeout(() => {
+    //   setCount((prev) => prev + 2);
+    //   setCount((prev) => prev + 2);
+    // })
+  }, []);
+
+  // useEffect(() => {
+  //   console.log("effect 1");
+  // }, [count]);
+
+  return <button onClick={handleConcurrentClick}>{count}</button>;
+}
+
+const Static = () => {
+  return 'static';
+}
 
 function App() {
-  const [count, setCount] = useState(0);
 
-  const handleClick = useCallback(() => {
-    setCount(count + 1);
-    setCount(count + 2);
-    console.log(count);
-    setCount((prev) => prev + 3);
-  }, [count]);
 
-//  useEffect(() => {
-//    setTimeout(() => {
-//      setCount(count + 1);
-//      setCount(count + 2);
-//      console.log(count);
-//    }, 100);
-//  }, [count]);
-
-  useEffect(() => {
-    console.log("effect 1");
-  }, [count]);
-
-  useEffect(() => {
-    console.log("effect2");
-  }, [count]);
-
-  return <button onClick={handleClick}>{count}</button>;
+  return <>
+    <Count/>
+  </>;
 
   // 事件系统
   // return <EventDemo/>

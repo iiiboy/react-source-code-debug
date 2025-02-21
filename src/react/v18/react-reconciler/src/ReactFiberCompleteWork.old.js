@@ -639,6 +639,7 @@ function cutOffTailIfNeeded(
   }
 }
 
+// 在 React 的渲染过程中，bubbleProperties 函数用于将子节点的标记（flags）和优先级（lanes）信息汇总到父节点。 具体而言，bubbleProperties 会遍历当前节点的所有子节点，将它们的 flags 和 lanes 合并到父节点的相应属性中。 这使得父节点能够了解其子树的更新状态，从而在后续的渲染和提交阶段做出相应的处理。 例如，在 completeWork 函数中，bubbleProperties 被调用来处理函数组件和类组件的子节点信息：
 function bubbleProperties(completedWork: Fiber) {
   const didBailout =
     completedWork.alternate !== null &&

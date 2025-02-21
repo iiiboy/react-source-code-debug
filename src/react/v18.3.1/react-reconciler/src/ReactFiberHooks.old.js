@@ -814,7 +814,11 @@ function updateReducer<S, I, A>(
     let update = first;
     do {
       const updateLane = update.lane;
+      // 如果这个 Update 的 lane 不在 renderLanes 内，那么不处理这个更新；假设 renderLanes 是 SyncLane 那么可以理解为此次更新
+      // 就是为处理同步更新的任务的，其他的任务都忽略；
       if (!isSubsetOfLanes(renderLanes, updateLane)) {
+        // 克隆这个被跳过的 Update 对象，并连接成一个新的链表；
+        // 因为这个 Update 对象被跳过了，所以会更新当前 fiber.lanes 值为当前 Update 的 lane 值；期待下次更新; 并且标记此次跳过了 Update.lane
         // Priority is insufficient. Skip this update. If this is the first
         // skipped update, the previous update/state is the new base
         // update/state.
@@ -842,6 +846,8 @@ function updateReducer<S, I, A>(
       } else {
         // This update does have sufficient priority.
 
+        // *注意，当前 Update 对象虽然没有被跳过，将会发生处理，但是如果之前有被跳过的 Update，依然会克隆当前的 Update 并且连接在链表中；但是 lane 会复制为 NoLane 后续遇到也不会进行处理；
+        // 这样操作的原因尚不清楚，根据 GPT 的回答是为了： 1. 维护更新链的完整性 2. 高优先级更新插队 3. 并发渲染的可中断与恢复。
         if (newBaseQueueLast !== null) {
           const clone: Update<S, A> = {
             // This update is going to be committed so we never want uncommit
@@ -877,7 +883,7 @@ function updateReducer<S, I, A>(
 
     // Mark that the fiber performed work, but only if the new state is
     // different from the current state.
-    if (!is(newState, hook.memoizedState)) {
+    if (!is(newState, hook.memoizedState)) {// 将最终的值与上次的值进行比较；如果不一样就标记当前的 wip 收到了更新；
       markWorkInProgressReceivedUpdate();
     }
 
@@ -892,8 +898,10 @@ function updateReducer<S, I, A>(
   // process them during this render, but we do need to track which lanes
   // are remaining.
   const lastInterleaved = queue.interleaved;
+  // ?什么情况下在 render 阶段中 interleaved 还是不为 null
   if (lastInterleaved !== null) {
     let interleaved = lastInterleaved;
+    // 与上面的被跳过的 Update 一样，将 Update.lane 合并到 fiber.lanes 中期待下次处理； 并且标记此次跳过了 Update.lane
     do {
       const interleavedLane = interleaved.lane;
       currentlyRenderingFiber.lanes = mergeLanes(
