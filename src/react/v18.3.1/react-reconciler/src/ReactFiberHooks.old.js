@@ -392,9 +392,10 @@ export function renderWithHooks<Props, SecondArg>(
       current !== null && current.type !== workInProgress.type;
   }
 
-  workInProgress.memoizedState = null;
-  workInProgress.updateQueue = null;
-  workInProgress.lanes = NoLanes;
+  // *每个组件执行之前，都会重置这三个属性
+  workInProgress.memoizedState = null;// Hook 链表
+  workInProgress.updateQueue = null;// 副作用链表
+  workInProgress.lanes = NoLanes;// 优先级
 
   // The following should have already been reset
   // currentHook = null;
@@ -424,12 +425,14 @@ export function renderWithHooks<Props, SecondArg>(
       ReactCurrentDispatcher.current = HooksDispatcherOnMountInDEV;
     }
   } else {
+    // -这一块就是为什么 Hook 挂载时和更新时执行的函数不一样的原因；
     ReactCurrentDispatcher.current =
       current === null || current.memoizedState === null
-        ? HooksDispatcherOnMount
-        : HooksDispatcherOnUpdate;
+        ? HooksDispatcherOnMount// 挂载时的 Hook
+        : HooksDispatcherOnUpdate;// 更新时的 Hook
   }
 
+  // 执行组件函数，获取 children
   let children = Component(props, secondArg);
 
   // Check if there was a render phase update
@@ -476,7 +479,7 @@ export function renderWithHooks<Props, SecondArg>(
 
   // We can assume the previous dispatcher is always this one, since we set it
   // at the beginning of the render phase and there's no re-entrance.
-  ReactCurrentDispatcher.current = ContextOnlyDispatcher;
+  ReactCurrentDispatcher.current = ContextOnlyDispatcher;// 重新为 Hook 提供商复制。所以在函数组件外使用 Hook 才会报错
 
   if (__DEV__) {
     workInProgress._debugHookTypes = hookTypesDev;
