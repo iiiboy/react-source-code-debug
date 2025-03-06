@@ -67,17 +67,16 @@ import "./App.css";
 //   // return <Diff />;
 // }
 
-function Count() {
-  const [count, setCount] = useState(0);
+function Count({count, set}) {
   const handleConcurrentClick = useCallback(() => {
-    setCount(1);
-    setCount(1);
-    setCount((prev) => prev + 1);
+    set(1);
+    set(1);
+    set((prev) => prev + 1);
     // setTimeout(() => {
     //   setCount((prev) => prev + 2);
     //   setCount((prev) => prev + 2);
     // })
-  }, []);
+  }, [set]);
 
   // useEffect(() => {
   //   console.log("effect 1");
@@ -86,15 +85,18 @@ function Count() {
   return <button onClick={handleConcurrentClick}>{count}</button>;
 }
 
-const Static = () => {
-  return 'static';
-}
-
 function App() {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    console.log(ref.current);
+  });
 
 
   return <>
-    <Count/>
+    <Count count={count} set={setCount}/>
+    <div ref={ref}>{count}</div>
   </>;
 
   // 事件系统

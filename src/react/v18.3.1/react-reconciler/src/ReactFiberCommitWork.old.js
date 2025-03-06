@@ -358,6 +358,7 @@ function commitBeforeMutationEffects_begin() {
       child !== null
     ) {
       child.return = fiber;
+      // 向下遍历
       nextEffect = child;
     } else {
       commitBeforeMutationEffects_complete();
